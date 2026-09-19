@@ -12,7 +12,8 @@
     "seed:staff": "tsx scripts/seed-staff.ts",
     "seed:demo": "node scripts/seed-demo.mjs",
     "test:concurrency": "node scripts/concurrency-test.mjs",
-    "test:booking": "node scripts/smoke-booking.mjs"
+    "test:booking": "node scripts/smoke-booking.mjs",
+    "test:manage": "node scripts/smoke-manage.mjs"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.5",

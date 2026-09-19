@@ -42,6 +42,15 @@ export interface AvailabilityResult {
   days: DayAvailability[];
 }
 
+export interface AvailabilityOptions {
+  /**
+   * Appointment id to ignore when subtracting existing bookings. Used when
+   * rescheduling: without this the customer's own appointment would block the
+   * very slot they are trying to keep or shift slightly.
+   */
+  excludeAppointmentId?: string;
+}
+
 interface Interval {
   start: number; // UTC ms
   end: number; // UTC ms, exclusive
@@ -76,7 +85,8 @@ function subtractIntervals(base: Interval[], cuts: Interval[]): Interval[] {
  * does not exist / is inactive (the route maps this to 404).
  */
 export async function computeAvailability(
-  query: AvailabilityQuery
+  query: AvailabilityQuery,
+  options: AvailabilityOptions = {}
 ): Promise<AvailabilityResult | null> {
   const horizon = bookingHorizon();
 
@@ -143,6 +153,12 @@ export async function computeAvailability(
       )
     );
 
+  // When rescheduling, the customer's own appointment must not block itself.
+  const ownAppointmentId = options.excludeAppointmentId;
+  const busyAppointments = ownAppointmentId
+    ? appointmentRows.filter((row) => row.id !== ownAppointmentId)
+    : appointmentRows;
+
   const nowUtcMs = Date.now();
 
   const days: DayAvailability[] = [];
@@ -194,7 +210,7 @@ export async function computeAvailability(
       }));
 
     // Rule 4: confirmed appointments expanded by the barber's buffer
-    const appointmentCuts: Interval[] = appointmentRows
+    const appointmentCuts: Interval[] = busyAppointments
       .filter(
         (row) =>
           row.startDatetime.getTime() < t + 24 * 3600 * 1000 &&

@@ -34,6 +34,15 @@ export const bookingInputSchema = z.object({
 
 export type BookingInput = z.infer<typeof bookingInputSchema>;
 
+/** Reschedule: the token identifies the appointment; the new start is validated
+    against the same horizon/past-slot guards as a fresh booking (§4 rules 6/7). */
+export const rescheduleInputSchema = z.object({
+  management_token: z.string().min(16).max(200),
+  start_datetime: isoDatetime,
+});
+
+export type RescheduleInput = z.infer<typeof rescheduleInputSchema>;
+
 export const availabilityQuerySchema = z
   .object({
     barber_id: z.string().uuid(),
