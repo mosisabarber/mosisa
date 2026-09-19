@@ -52,10 +52,10 @@ Useful scripts:
 ## Build progress
 
 - [x] **Stage 1** — Project setup: Next.js + TS + Tailwind scaffold, Vercel-ready, Drizzle + Neon configured
-- [ ] Stage 2 — Schema + migration (incl. the `no_overlapping_appointments` EXCLUDE constraint)
-- [ ] Stage 3 — Design system (`components/ui`)
-- [ ] Stage 4 — Public content pages
-- [ ] Stage 5 — Booking engine
+- [x] Stage 2 — Schema + migration (incl. the `no_overlapping_appointments` EXCLUDE constraint; concurrency test passed against Neon)
+- [x] Stage 3 — Design system (`components/ui`)
+- [x] Stage 4 — Public content pages
+- [x] Stage 5 — Booking engine (end-to-end smoke test passed: availability, 201 booking, 409 double-book rejection, 429 rate limit)
 - [ ] Stage 6 — Notifications (Resend + SMSEthiopia + .ics)
 - [ ] Stage 7 — Guest appointment management (`/manage/[token]`)
 - [ ] Stage 8 — Auth + admin dashboard

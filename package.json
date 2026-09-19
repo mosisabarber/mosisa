@@ -9,7 +9,10 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "seed:staff": "tsx scripts/seed-staff.ts"
+    "seed:staff": "tsx scripts/seed-staff.ts",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "test:concurrency": "node scripts/concurrency-test.mjs",
+    "test:booking": "node scripts/smoke-booking.mjs"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.5",
