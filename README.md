@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mosisa Barber Shop
 
-## Getting Started
+Online booking platform for Mosisa Barber Shop (Addis Ababa).
 
-First, run the development server:
+**Build spec:** see [`AGENTS.md`](./AGENTS.md) — the authoritative, stage-by-stage implementation plan. Product/design rationale lives in `barber-shop-product-spec.md`.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Tech stack
+
+- **Next.js** (App Router) + **TypeScript** + **Tailwind CSS**
+- **PostgreSQL** on [Neon](https://neon.tech) via **Drizzle ORM** (drizzle-kit migrations)
+- **Better Auth** (staff/admin only — the public site has no accounts)
+- **Vercel** hosting + **Vercel Blob** image storage
+- **Resend** (email) + **SMSEthiopia** (SMS) for notifications
+- **Zod** validation · **date-fns** for date handling · timezone: `Africa/Addis_Ababa` (fixed)
+
+## Project structure
+
+```
+app/            Routes — (public)/ public pages, admin/ staff area, api/ endpoints
+db/             Drizzle schema (schema.ts), migrations/, Neon client (client.ts)
+lib/            booking/ availability+validation, notifications/ email+SMS+calendar, rate-limit
+components/     ui/ design system, booking/, barbers/
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+cp .env.example .env.local   # fill in DATABASE_URL etc. (see .env.example)
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Learn More
+Useful scripts:
 
-To learn more about Next.js, take a look at the following resources:
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run lint` | ESLint |
+| `npm run db:generate` | Generate Drizzle migrations from `db/schema.ts` |
+| `npm run db:migrate` | Apply migrations to the database |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment (Vercel + Neon)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Push this repo to GitHub, then import it in Vercel (framework preset: Next.js).
+2. Create a Neon project and copy its pooled connection string.
+3. In Vercel → Settings → Environment Variables, add every variable from `.env.example` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BLOB_READ_WRITE_TOKEN`, `RESEND_API_KEY`, `SMSETHIOPIA_API_KEY`, `NEXT_PUBLIC_SITE_URL`). Never commit `.env` files.
+4. Redeploy. Migrations are applied via `npm run db:migrate` (run locally against the Neon URL, or as a build/release step).
 
-## Deploy on Vercel
+## Build progress
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [x] **Stage 1** — Project setup: Next.js + TS + Tailwind scaffold, Vercel-ready, Drizzle + Neon configured
+- [ ] Stage 2 — Schema + migration (incl. the `no_overlapping_appointments` EXCLUDE constraint)
+- [ ] Stage 3 — Design system (`components/ui`)
+- [ ] Stage 4 — Public content pages
+- [ ] Stage 5 — Booking engine
+- [ ] Stage 6 — Notifications (Resend + SMSEthiopia + .ics)
+- [ ] Stage 7 — Guest appointment management (`/manage/[token]`)
+- [ ] Stage 8 — Auth + admin dashboard
+- [ ] Stage 9 — Testing (concurrency, cancellation window, rate limits)
+- [ ] Stage 10 — Performance / SEO / accessibility
+- [ ] Stage 11 — Production deploy
