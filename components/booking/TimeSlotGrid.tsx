@@ -68,7 +68,7 @@ export function TimeSlotGrid({
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 min-[380px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5">
       {slots.map((slotIso) => {
         const isSelected = value === slotIso;
         return (
@@ -76,9 +76,12 @@ export function TimeSlotGrid({
             key={slotIso}
             type="button"
             aria-pressed={isSelected}
+            aria-label={`${formatAddisTime(Date.parse(slotIso))} ${
+              isSelected ? "selected" : "available"
+            }`}
             onClick={() => onSelect(slotIso)}
             className={cn(
-              "rounded-md border px-2 py-2.5 text-sm font-medium transition-colors",
+              "min-h-11 rounded-md border px-1 py-2.5 text-sm font-medium tabular-nums transition-colors",
               isSelected
                 ? "border-brass bg-brass text-charcoal"
                 : "border-line bg-surface text-cream hover:border-brass/50 hover:text-brass-strong"

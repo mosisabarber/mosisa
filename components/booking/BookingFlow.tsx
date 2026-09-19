@@ -7,7 +7,7 @@ import { TimeSlotGrid } from "@/components/booking/TimeSlotGrid";
 import { BookingSummary } from "@/components/booking/BookingSummary";
 import { BookingConfirmationModal } from "@/components/booking/BookingConfirmationModal";
 import { bookingInputSchema } from "@/lib/booking/validation";
-import { addisDateKey, formatAddisTime } from "@/lib/booking/time";
+import { addisDateKey, formatAddisTime, formatAddisDateLabel } from "@/lib/booking/time";
 import { cn } from "@/lib/cn";
 
 export interface FlowService {
@@ -168,6 +168,10 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
     windowStartMs + WINDOW_DAYS * DAY_MS <=
       Date.now() + MAX_HORIZON_DAYS * DAY_MS;
 
+  /** True once the user has paged the window forward (so they can come back). */
+  const canGoBackWindow =
+    windowStartMs !== null && windowStartMs > Date.now() + DAY_MS;
+
   function refreshAfterRejection() {
     // Force the availability effect to re-fetch (e.g. after a 409 race).
     setWindowStartMs(null);
@@ -287,7 +291,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
         {/* 2 — Barber */}
         <Card className="p-5">
           {stepLabel(2, "Choose your barber", !!barber, !!service && !barber)}
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {barbers.map((b) => (
               <button
                 key={b.id}
@@ -321,7 +325,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
                     .join("")}
                 </span>
                 <span className="min-w-0">
-                  <span className="block font-medium">{b.name}</span>
+                  <span className="block truncate font-medium">{b.name}</span>
                   <span className="block text-xs text-cream-muted">
                     {barberId === b.id ? "Selected" : "Available"}
                   </span>
@@ -332,38 +336,68 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
         </Card>
 
         {/* 3 — Date & time */}
-        <Card className="p-5">
+        <Card className="p-4 sm:p-5">
           {stepLabel(
             3,
             "Pick a date & time",
             !!selectedSlot,
             !!service && !!barber && !selectedSlot
           )}
-          <div className="mt-4">
+          <div className="mt-4 space-y-4">
             <DayStripPicker
               days={days}
               slotsByDate={slotsByDate}
               value={selectedDate}
               disabled={!service || !barber}
+              todayKey={addisDateKey(Date.now())}
               onSelect={(dateKey) => {
                 setSelectedDate(dateKey);
                 setSelectedSlot(null);
               }}
             />
-            {canAdvanceWindow && (
-              <button
-                type="button"
-                className="mt-2 text-sm text-brass-strong hover:text-brass"
-                onClick={() =>
-                  setWindowStartMs(
-                    (prev) => (prev ?? Date.now()) + WINDOW_DAYS * DAY_MS
-                  )
-                }
-              >
-                Later dates →
-              </button>
-            )}
-            <div className="mt-4">
+
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <p className="text-xs text-cream-muted">
+                {!service || !barber
+                  ? "Pick a service and barber first"
+                  : selectedDate
+                    ? `Times for ${formatAddisDateLabel(selectedDate)}`
+                    : "Pick a day above, then choose a time"}
+              </p>
+              <div className="flex items-center gap-2">
+                {canGoBackWindow && (
+                  <button
+                    type="button"
+                    className="rounded-md border border-line px-2.5 py-1 text-xs font-medium text-cream-muted transition-colors hover:border-brass/40 hover:text-cream"
+                    onClick={() =>
+                      setWindowStartMs((prev) =>
+                        Math.max(
+                          (prev ?? Date.now()) - WINDOW_DAYS * DAY_MS,
+                          Date.now()
+                        )
+                      )
+                    }
+                  >
+                    ← Earlier
+                  </button>
+                )}
+                {canAdvanceWindow && (
+                  <button
+                    type="button"
+                    className="rounded-md border border-line px-2.5 py-1 text-xs font-medium text-cream-muted transition-colors hover:border-brass/40 hover:text-cream"
+                    onClick={() =>
+                      setWindowStartMs(
+                        (prev) => (prev ?? Date.now()) + WINDOW_DAYS * DAY_MS
+                      )
+                    }
+                  >
+                    Later dates →
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-line pt-4">
               <TimeSlotGrid
                 dateKey={selectedDate}
                 slots={selectedDate ? (slotsByDate[selectedDate] ?? []) : []}
@@ -442,7 +476,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
               </p>
               <p className="truncate text-xs text-cream-muted">
                 {selectedSlot
-                  ? `${addisDateKey(Date.parse(selectedSlot))} · ${formatAddisTime(Date.parse(selectedSlot))} · ${service?.price ?? ""} Br`
+                  ? `${formatAddisDateLabel(addisDateKey(Date.parse(selectedSlot)))} · ${formatAddisTime(Date.parse(selectedSlot))} · ${service?.price ?? ""} Br`
                   : service
                     ? `${service.durationMinutes} min · ${service.price} Br`
                     : "Pick a time"}

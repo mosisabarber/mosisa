@@ -11,20 +11,29 @@ export interface DayStripPickerProps {
   value: string | null;
   onSelect: (dateKey: string) => void;
   disabled?: boolean;
+  /** Today's Addis date key — used to label the first day "Today". */
+  todayKey?: string;
 }
 
-/** Horizontal scrollable day-strip picker (spec §8). */
+/**
+ * Day picker for the booking flow's date & time step.
+ *
+ * Renders a wrapping grid — all days of the current window are visible at once
+ * with no horizontal scrolling on any viewport:
+ *   2 columns on phones, 4 on tablets, 7 (a full week per row) on desktop.
+ */
 export function DayStripPicker({
   days,
   slotsByDate,
   value,
   onSelect,
   disabled = false,
+  todayKey,
 }: DayStripPickerProps) {
   return (
     <div
       className={cn(
-        "-mx-1 flex gap-2 overflow-x-auto px-1 pb-2",
+        "grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7",
         disabled && "pointer-events-none opacity-50"
       )}
       role="listbox"
@@ -50,6 +59,7 @@ export function DayStripPicker({
           "Nov",
           "Dec",
         ][Number(dateKey.slice(5, 7)) - 1];
+        const isToday = dateKey === todayKey;
 
         return (
           <button
@@ -57,26 +67,31 @@ export function DayStripPicker({
             type="button"
             role="option"
             aria-selected={isSelected}
+            aria-label={`${dow} ${dayNum} ${month}${
+              soldOut ? " — fully booked" : ""
+            }`}
             disabled={soldOut}
             onClick={() => onSelect(dateKey)}
             className={cn(
-              "flex w-[68px] shrink-0 flex-col items-center rounded-lg border px-2 py-2.5 transition-colors",
+              "flex min-h-16 flex-col items-center justify-center rounded-lg border px-1 py-2 transition-colors",
               isSelected
                 ? "border-brass bg-brass/15 text-brass-strong"
                 : "border-line bg-surface text-cream-muted hover:border-brass/40 hover:text-cream",
               soldOut && "cursor-not-allowed opacity-35 hover:border-line"
             )}
           >
-            <span className="text-[11px] uppercase tracking-widest">
-              {dow}
+            <span className="text-[11px] uppercase tracking-wide">
+              {isToday ? "Today" : dow}
             </span>
             <span className="mt-0.5 font-heading text-lg font-semibold leading-none">
               {dayNum}
             </span>
-            <span className="text-[11px] text-cream-muted/70">{month}</span>
+            <span className="mt-0.5 text-[11px] text-cream-muted/70">
+              {month}
+            </span>
             <span
               className={cn(
-                "mt-1.5 h-1.5 w-1.5 rounded-full",
+                "mt-1 h-1.5 w-1.5 rounded-full",
                 count === undefined
                   ? "bg-cream-muted/30"
                   : soldOut

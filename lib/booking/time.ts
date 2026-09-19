@@ -36,6 +36,42 @@ export function formatAddisTime(utcMs: number): string {
   return shifted(utcMs).toISOString().slice(11, 16);
 }
 
+const WEEKDAY_LONG = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/**
+ * Human label for an Addis calendar date key, e.g. 'Tue, 22 Sep 2026'.
+ * Used by the booking flow's date/time step (better than a raw 'YYYY-MM-DD').
+ */
+export function formatAddisDateLabel(dateKey: string): string {
+  const dow = WEEKDAY_LONG[addisDayOfWeek(dateKey)] ?? "";
+  const day = Number(dateKey.slice(8, 10));
+  const month = MONTH_SHORT[Number(dateKey.slice(5, 7)) - 1] ?? "";
+  const year = dateKey.slice(0, 4);
+  return `${dow.slice(0, 3)}, ${day} ${month} ${year}`;
+}
+
 /** Build an ISO datetime string (with +03:00 offset) from date + 'HH:mm'. */
 export function buildAddisIso(dateKey: string, hhmm: string): string {
   return `${dateKey}T${hhmm}:00+03:00`;

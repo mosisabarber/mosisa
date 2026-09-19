@@ -37,6 +37,15 @@ async function run() {
     process.exit(1);
   }
 
+  // Unique phone per run: the DB-backed limit (§5) is 1 booking / 60s / phone,
+  // so re-running with fixed numbers would trip the limiter on step 3.
+  // Format must satisfy ethiopianPhone: 0 + [97] + 8 digits.
+  const runId = String(Date.now()).slice(-7);
+  const seq = Number(runId.slice(0, 5)) % 100000;
+  const phoneA = `091${String(seq).padStart(7, "0")}`;
+  const phoneB = `071${String(seq + 1).padStart(7, "0")}`;
+  const tag = `smoke-${runId}@mosisa.example`;
+
   // 1 — availability
   const start = new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
   const end = new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10);
@@ -66,8 +75,8 @@ async function run() {
     service_id: service.id,
     start_datetime: firstSlot,
     customer_name: "Smoke Test A",
-    customer_phone: "0912345678",
-    customer_email: "smoke-a@mosisa.example",
+    customer_phone: phoneA,
+    customer_email: tag,
   });
   const aBody = await a.json();
   check("booking succeeds (201)", a.status === 201, JSON.stringify(aBody));
@@ -82,8 +91,8 @@ async function run() {
     service_id: service.id,
     start_datetime: firstSlot,
     customer_name: "Smoke Test B",
-    customer_phone: "0912345679",
-    customer_email: "smoke-b@mosisa.example",
+    customer_phone: phoneB,
+    customer_email: tag,
   });
   const bBody = await b.json();
   check(
@@ -99,8 +108,8 @@ async function run() {
     service_id: service.id,
     start_datetime: laterSlot,
     customer_name: "Smoke Test A",
-    customer_phone: "0912345678",
-    customer_email: "smoke-a@mosisa.example",
+    customer_phone: phoneA,
+    customer_email: tag,
   });
   const cBody = await c.json();
   check(
