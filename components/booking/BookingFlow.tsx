@@ -7,6 +7,7 @@ import { TimeSlotGrid } from "@/components/booking/TimeSlotGrid";
 import { BookingSummary } from "@/components/booking/BookingSummary";
 import { BookingConfirmationModal } from "@/components/booking/BookingConfirmationModal";
 import { bookingInputSchema } from "@/lib/booking/validation";
+import { addisDateKey, formatAddisTime } from "@/lib/booking/time";
 import { cn } from "@/lib/cn";
 
 export interface FlowService {
@@ -251,7 +252,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+    <div className="grid gap-6 pb-24 lg:grid-cols-[1fr_340px] lg:pb-4">
       <div className="flex flex-col gap-5">
         {/* 1 — Service */}
         <Card className="p-5">
@@ -286,7 +287,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
         {/* 2 — Barber */}
         <Card className="p-5">
           {stepLabel(2, "Choose your barber", !!barber, !!service && !barber)}
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {barbers.map((b) => (
               <button
                 key={b.id}
@@ -298,13 +299,33 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
                   setSelectedSlot(null);
                 }}
                 className={cn(
-                  "rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg border p-4 text-left transition-colors",
                   barberId === b.id
-                    ? "border-brass bg-brass/10 text-brass-strong"
-                    : "border-line bg-surface text-cream hover:border-brass/40"
+                    ? "border-brass bg-brass/10"
+                    : "border-line bg-surface hover:border-brass/40"
                 )}
               >
-                {b.name}
+                <span
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-heading text-sm font-semibold",
+                    barberId === b.id
+                      ? "bg-brass text-charcoal"
+                      : "bg-forest/50 text-brass-strong"
+                  )}
+                  aria-hidden="true"
+                >
+                  {b.name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join("")}
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium">{b.name}</span>
+                  <span className="block text-xs text-cream-muted">
+                    {barberId === b.id ? "Selected" : "Available"}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
@@ -389,7 +410,8 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
         </Card>
       </div>
 
-      <div>
+      {/* Desktop: sticky summary sidebar */}
+      <div className="hidden lg:block">
         <BookingSummary
           barberName={barber?.name ?? "—"}
           serviceName={service?.name ?? "—"}
@@ -401,6 +423,42 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
           onSubmit={submit}
         />
       </div>
+
+      {/* Mobile: sticky action bar — the confirm button is always in reach */}
+      {!confirmation && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-charcoal/95 px-4 pt-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+          {submitError && (
+            <p
+              className="mb-2 line-clamp-2 rounded-md border border-error/40 bg-error/10 px-3 py-1.5 text-xs text-error"
+              role="alert"
+            >
+              {submitError}
+            </p>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {service ? service.name : "Select a service"}
+              </p>
+              <p className="truncate text-xs text-cream-muted">
+                {selectedSlot
+                  ? `${addisDateKey(Date.parse(selectedSlot))} · ${formatAddisTime(Date.parse(selectedSlot))} · ${service?.price ?? ""} Br`
+                  : service
+                    ? `${service.durationMinutes} min · ${service.price} Br`
+                    : "Pick a time"}
+              </p>
+            </div>
+            <Button
+              className="shrink-0"
+              onClick={submit}
+              loading={submitting}
+              disabled={!selectedSlot}
+            >
+              {selectedSlot ? "Confirm" : "Pick a time"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {confirmation && service && barber && (
         <BookingConfirmationModal

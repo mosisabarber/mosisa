@@ -47,7 +47,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "w-full max-w-md rounded-lg border border-line bg-surface-raised shadow-2xl",
+          "max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-surface-raised shadow-2xl",
           className
         )}
       >
