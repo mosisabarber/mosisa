@@ -11,8 +11,12 @@
  *
  * Uses raw SQL only (no schema import) and cleans up after itself.
  */
-import "dotenv/config";
+import { config } from "dotenv";
 import { Pool } from "@neondatabase/serverless";
+
+// Load .env.local (Next.js style) with .env as fallback
+config({ path: ".env.local" });
+config({ path: ".env" });
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString || connectionString.includes("user:password")) {
