@@ -41,6 +41,11 @@ Useful scripts:
 | `npm run lint` | ESLint |
 | `npm run db:generate` | Generate Drizzle migrations from `db/schema.ts` |
 | `npm run db:migrate` | Apply migrations to the database |
+| `npm run seed:staff` | Create a staff (admin) account via Better Auth |
+| `npm run seed:demo` | Seed demo barbers/services/hours |
+| `npm run test:concurrency` | §3 acceptance: overlapping inserts must be rejected |
+| `npm run test:booking` | §10 Stage 5: booking flow + double-book + rate limit |
+| `npm run test:manage` | §10 Stage 7: manage page + the 12-hour rule |
 
 ## Deployment (Vercel + Neon)
 
@@ -57,7 +62,7 @@ Useful scripts:
 - [x] Stage 4 — Public content pages
 - [x] Stage 5 — Booking engine (end-to-end smoke test passed: availability, 201 booking, 409 double-book rejection, 429 rate limit)
 - [ ] Stage 6 — Notifications (Resend + SMSEthiopia + .ics)
-- [ ] Stage 7 — Guest appointment management (`/manage/[token]`)
+- [x] Stage 7 — Guest appointment management (`/manage/[token]` — view/reschedule/cancel; 21-check acceptance test passed incl. the 12-hour soft-warning rule)
 - [ ] Stage 8 — Auth + admin dashboard
 - [ ] Stage 9 — Testing (concurrency, cancellation window, rate limits)
 - [ ] Stage 10 — Performance / SEO / accessibility
