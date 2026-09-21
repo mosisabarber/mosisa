@@ -155,9 +155,9 @@ export async function POST(request: Request) {
     summary: `Appointment - ${service.name} with ${barber.name}`,
     description: `Your appointment at Mosisa Barber Shop.\nManage: ${manageUrl}`,
     location: "Mosisa Barber Shop, Harar",
-  });
+    });
 
-    const emailResult = await sendEmail(
+  const emailResult = await sendEmail(
     input.customer_email,
     `Your booking - ${service.name} with ${barber.name}`,
     `<p>Hi ${input.customer_name},</p>

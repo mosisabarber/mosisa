@@ -178,12 +178,12 @@ export async function PATCH(
   }
 
   // Fire-and-forget notification of the new time (never fails the request).
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const manageUrl = `${siteUrl}/manage/${token}`;
   const newDateKey = addisDateKey(startMs);
   const newStartTime = formatAddisTime(startMs);
 
-    const emailResult = await sendEmail(
+  const emailResult = await sendEmail(
     appointment.customerEmail,
     `Rescheduled - ${service.name} with ${appointment.barber.name}`,
     `<p>Hi ${appointment.customerName},</p>
@@ -259,7 +259,7 @@ export async function DELETE(
   const startTime = formatAddisTime(appointment.startDatetime.getTime());
   const change = classifyChange(appointment.startDatetime);
 
-    const emailResult = await sendEmail(
+        const emailResult = await sendEmail(
     appointment.customerEmail,
     `Cancelled - ${appointment.service.name}`,
     `<p>Hi ${appointment.customerName},</p>
