@@ -86,7 +86,7 @@ export function DayStripPicker({
             <span className="mt-0.5 font-heading text-lg font-semibold leading-none">
               {dayNum}
             </span>
-            <span className="mt-0.5 text-[11px] text-cream-muted/70">
+            <span className="mt-0.5 text-[11px] text-cream-muted">
               {month}
             </span>
             <span

@@ -19,6 +19,13 @@ export async function sendEmail(
     return { success: false, error: "not_configured" };
   }
 
+  // Resend's testing sender (onboarding@resend.dev) only delivers to the
+  // account owner's own address; once the shop's domain is verified in
+  // Resend, set EMAIL_FROM to e.g. "Mosisa Barber Shop <bookings@mosisa.com>"
+  // and any customer address becomes deliverable.
+  const from =
+    process.env.EMAIL_FROM ?? "Mosisa Barber Shop <onboarding@resend.dev>";
+
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -27,8 +34,7 @@ export async function sendEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        // TODO(Stage 6): switch to the shop's verified domain sender.
-        from: "Mosisa Barber Shop <onboarding@resend.dev>",
+        from,
         to: [to],
         subject,
         html,

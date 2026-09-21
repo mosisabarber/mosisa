@@ -46,6 +46,9 @@ Useful scripts:
 | `npm run test:concurrency` | §3 acceptance: overlapping inserts must be rejected |
 | `npm run test:booking` | §10 Stage 5: booking flow + double-book + rate limit |
 | `npm run test:manage` | §10 Stage 7: manage page + the 12-hour rule |
+| `npm run test:validation` | §16 Stage 9: input validation, 60-day horizon, token entropy, admin 401s |
+| `npm run test:buffer` | §16 Stage 9: per-barber buffer time in slot calculation |
+| `npm run test:concurrency` (strict) | §16 Stage 9: true simultaneous POST race on one slot — `scripts/test-concurrency-strict.mjs` |
 
 ## Deployment (Vercel + Neon)
 
@@ -63,7 +66,7 @@ Useful scripts:
 - [x] Stage 5 — Booking engine (end-to-end smoke test passed: availability, 201 booking, 409 double-book rejection, 429 rate limit)
 - [ ] Stage 6 — Notifications (Resend + SMSEthiopia + .ics)
 - [x] Stage 7 — Guest appointment management (`/manage/[token]` — view/reschedule/cancel; 21-check acceptance test passed incl. the 12-hour soft-warning rule)
-- [ ] Stage 8 — Auth + admin dashboard
-- [ ] Stage 9 — Testing (concurrency, cancellation window, rate limits)
-- [ ] Stage 10 — Performance / SEO / accessibility
+- [x] Stage 8 — Auth + admin dashboard (Better Auth staff login, session-gated `/admin/*` pages + `/api/admin/*` CRUD, all routes verified 307/401 unauthenticated)
+- [x] Stage 9 — Testing (validation/hardening, buffer-time, horizon, strict concurrent-race suites — `npm test` runs them all; concurrency requirement satisfied by `test:concurrency:strict`)
+- [x] Stage 10 — Performance / SEO / accessibility (robots/sitemap/manifest, JSON-LD, OG tags, per-page canonicals, next/image + remotePatterns, WCAG AA contrast fixes, skip-link, focus-visible, reduced-motion)
 - [ ] Stage 11 — Production deploy

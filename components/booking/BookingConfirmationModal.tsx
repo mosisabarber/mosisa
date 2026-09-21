@@ -44,7 +44,7 @@ export function BookingConfirmationModal({
     endIso: new Date(Date.parse(slotIso) + 60 * 60 * 1000).toISOString(),
     summary: `Appointment — ${serviceName} with ${barberName}`,
     description: `Your appointment at Mosisa Barber Shop.\nManage: ${manageHref}`,
-    location: "Mosisa Barber Shop, Addis Ababa",
+    location: "Mosisa Barber Shop, Harar",
   });
 
   return (
@@ -64,7 +64,7 @@ export function BookingConfirmationModal({
         <p className="mt-2">
           {addisDateKey(Date.parse(slotIso))} ·{" "}
           {formatAddisTime(Date.parse(slotIso))}{" "}
-          <span className="text-cream-muted">(Addis Ababa)</span>
+          <span className="text-cream-muted">(Harar)</span>
         </p>
       </div>
 
@@ -81,7 +81,7 @@ export function BookingConfirmationModal({
         </Button>
       </div>
 
-      <p className="mt-3 text-center text-xs leading-5 text-cream-muted/70">
+      <p className="mt-3 text-center text-xs leading-5 text-cream-muted">
         Confirmation sent to your email and phone. If nothing arrives, use this
         link to manage your booking:{" "}
         <a href={manageHref} className="text-brass-strong underline">

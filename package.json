@@ -12,6 +12,11 @@
     "seed:staff": "tsx scripts/seed-staff.ts",
     "seed:demo": "node scripts/seed-demo.mjs",
     "test:concurrency": "node scripts/concurrency-test.mjs",
+    "test:concurrency:strict": "node scripts/test-concurrency-strict.mjs",
+    "test:validation": "node scripts/test-validation.mjs",
+    "test:buffer": "node scripts/test-buffer.mjs",
+    "test:horizon": "node scripts/test-horizon.mjs",
+    "test": "node scripts/test-validation.mjs && node scripts/test-buffer.mjs && node scripts/test-horizon.mjs && node scripts/test-concurrency-strict.mjs",
     "test:booking": "node scripts/smoke-booking.mjs",
     "test:manage": "node scripts/smoke-manage.mjs"
   },

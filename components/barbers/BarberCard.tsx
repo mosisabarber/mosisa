@@ -1,17 +1,33 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, Badge, Button } from "@/components/ui";
 import type { Barber } from "@/lib/data";
 
-export function BarberCard({ barber }: { barber: Barber }) {
+/**
+ * Reusable barber tile. Copy and the target URL are injected by the caller so
+ * this stays a server component (no client dictionary access) and works from
+ * both the barbers index and the homepage.
+ */
+export function BarberCard({
+  barber,
+  ctaLabel,
+  href,
+}: {
+  barber: Barber;
+  ctaLabel: string;
+  href: string;
+}) {
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <div className="relative flex h-56 items-center justify-center bg-gradient-to-br from-forest/40 via-navy/30 to-surface-raised">
         {barber.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={barber.photoUrl}
             alt={barber.name}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 1024px) 384px, (min-width: 640px) 50vw, 100vw"
+            quality={90}
+            className="object-cover"
           />
         ) : (
           <span className="font-heading text-5xl font-semibold text-brass/60">
@@ -45,9 +61,9 @@ export function BarberCard({ barber }: { barber: Barber }) {
         )}
 
         <div className="mt-auto pt-2">
-          <Link href={`/barbers/${barber.slug}`}>
+          <Link href={href}>
             <Button variant="secondary" size="sm" fullWidth>
-              View profile & book
+              {ctaLabel}
             </Button>
           </Link>
         </div>

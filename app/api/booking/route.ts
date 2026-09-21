@@ -154,7 +154,7 @@ export async function POST(request: Request) {
     endIso: endDatetime.toISOString(),
     summary: `Appointment - ${service.name} with ${barber.name}`,
     description: `Your appointment at Mosisa Barber Shop.\nManage: ${manageUrl}`,
-    location: "Mosisa Barber Shop, Addis Ababa",
+    location: "Mosisa Barber Shop, Harar",
   });
 
   void sendEmail(
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
     `<p>Hi ${input.customer_name},</p>
      <p>Your appointment is confirmed:</p>
      <p><strong>${service.name}</strong> with ${barber.name}<br/>
-     ${startKey} at ${startTime}-${endTime} (Addis Ababa)</p>
+     ${startKey} at ${startTime}-${endTime} (Harar)</p>
      <p><a href="${manageUrl}">Manage your appointment</a> (view, reschedule, cancel)</p>
      <p><a href="data:text/calendar;base64,${Buffer.from(ics).toString("base64")}">Add to calendar (.ics)</a></p>`
   );

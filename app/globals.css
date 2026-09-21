@@ -46,3 +46,46 @@ body {
   font-family: var(--font-sans);
 }
 
+/* ---------------------------------------------------------------------------
+ * Accessibility (Stage 10 / spec §15)
+ * ------------------------------------------------------------------------- */
+
+/* Visible keyboard focus everywhere (WCAG 2.4.7). Brass ring on charcoal
+   reads clearly without shouting. */
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+/* Skip-to-content link: hidden until keyboard-focused (WCAG 2.4.1). */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--color-brass);
+  color: var(--color-charcoal);
+  padding: 0.5rem 1rem;
+  border-radius: 0 0 0.375rem 0.375rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  left: 1rem;
+}
+
+/* Honour prefers-reduced-motion (WCAG 2.3.3). Transitions/animations are
+   effectively disabled rather than removed, so layout stays intact. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+

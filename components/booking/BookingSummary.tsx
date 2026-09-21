@@ -51,10 +51,10 @@ export function BookingSummary({
               <>
                 {addisDateKey(Date.parse(slotIso))}
                 <br />
-                {formatAddisTime(Date.parse(slotIso))} (Addis Ababa)
+                {formatAddisTime(Date.parse(slotIso))} (Harar)
               </>
             ) : (
-              <span className="text-cream-muted/60">Pick a time</span>
+              <span className="text-cream-muted">Pick a time</span>
             )}
           </dd>
         </div>
@@ -84,7 +84,7 @@ export function BookingSummary({
         {slotIso ? submitLabel : "Pick a time first"}
       </Button>
 
-      <p className="mt-3 text-center text-xs leading-5 text-cream-muted/70">
+      <p className="mt-3 text-center text-xs leading-5 text-cream-muted">
         Free cancellation up to 12 hours before your appointment.
       </p>
     </Card>

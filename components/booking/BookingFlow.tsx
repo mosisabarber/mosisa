@@ -8,6 +8,9 @@ import { BookingSummary } from "@/components/booking/BookingSummary";
 import { BookingConfirmationModal } from "@/components/booking/BookingConfirmationModal";
 import { bookingInputSchema } from "@/lib/booking/validation";
 import { addisDateKey, formatAddisTime, formatAddisDateLabel } from "@/lib/booking/time";
+import { formatTemplate } from "@/lib/i18n/format";
+import type { Dictionary } from "@/lib/i18n/dictionaries/en";
+import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/cn";
 
 export interface FlowService {
@@ -28,6 +31,8 @@ interface Props {
   services: FlowService[];
   barbers: FlowBarber[];
   initialBarberSlug?: string | null;
+  dictionary: Dictionary;
+  locale: Locale;
 }
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -43,7 +48,7 @@ function stepLabel(n: number, title: string, done: boolean, active: boolean) {
     <p
       className={cn(
         "flex items-center gap-2 text-xs font-semibold uppercase tracking-widest",
-        active ? "text-brass" : done ? "text-cream-muted" : "text-cream-muted/50"
+        active ? "text-brass" : done ? "text-cream-muted" : "text-cream-muted"
       )}
     >
       <span
@@ -53,7 +58,7 @@ function stepLabel(n: number, title: string, done: boolean, active: boolean) {
             ? "border-brass text-brass"
             : done
               ? "border-cream-muted/60 text-cream-muted"
-              : "border-line text-cream-muted/50"
+              : "border-line text-cream-muted"
         )}
       >
         {done ? "✓" : n}
@@ -63,7 +68,13 @@ function stepLabel(n: number, title: string, done: boolean, active: boolean) {
   );
 }
 
-export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
+export function BookingFlow({
+  services,
+  barbers,
+  initialBarberSlug,
+  dictionary: t,
+  locale,
+}: Props) {
   const preselectedBarber = useMemo(
     () => barbers.find((b) => b.slug === initialBarberSlug) ?? null,
     [barbers, initialBarberSlug]
@@ -152,9 +163,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
       })
       .catch((err: unknown) => {
         if ((err as Error).name === "AbortError") return;
-        setAvailabilityError(
-          "We couldn't load opening times. Check your connection and try again."
-        );
+        setAvailabilityError(t.book.errors.generic);
       })
       .finally(() => {
         if (!controller.signal.aborted) setAvailabilityLoading(false);
@@ -192,7 +201,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
 
     if (!parsed.success) {
       setSubmitError(
-        parsed.error.issues[0]?.message ?? "Please check your details."
+        parsed.error.issues[0]?.message ?? t.book.errors.generic
       );
       return;
     }
@@ -222,21 +231,15 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
       }
 
       if (res.status === 409) {
-        setSubmitError(
-          body.message ?? "That slot was just taken — pick another time."
-        );
+        setSubmitError(body.message ?? t.book.errors.slotTaken);
         refreshAfterRejection();
       } else if (res.status === 429) {
-        setSubmitError(body.message ?? "Too many attempts — please wait a bit.");
+        setSubmitError(body.message ?? t.book.errors.rateLimitedIp);
       } else {
-        setSubmitError(
-          body.message ?? "Booking failed. Please try again in a moment."
-        );
+        setSubmitError(body.message ?? t.book.errors.generic);
       }
     } catch {
-      setSubmitError(
-        "Network problem — we couldn't reach the shop. Please try again."
-      );
+      setSubmitError(t.book.errors.generic);
     } finally {
       setSubmitting(false);
     }
@@ -247,8 +250,8 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
       <Card>
         <StateMessage
           state="empty"
-          title="Online booking is being set up"
-          description="Services and barbers are still being configured. Please check back soon, or call the shop."
+          title={t.book.title}
+          description={t.book.subtitle}
           className="py-14"
         />
       </Card>
@@ -260,7 +263,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
       <div className="flex flex-col gap-5">
         {/* 1 — Service */}
         <Card className="p-5">
-          {stepLabel(1, "Choose a service", !!service, !service)}
+          {stepLabel(1, t.book.chooseService, !!service, !service)}
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {services.map((s) => (
               <button
@@ -281,7 +284,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
               >
                 <span className="font-medium">{s.name}</span>
                 <span className="mt-1 block text-xs text-cream-muted">
-                  {s.durationMinutes} min · {s.price} Br
+                  {s.durationMinutes} {t.common.minutes} · {s.price} {t.common.birr}
                 </span>
               </button>
             ))}
@@ -290,7 +293,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
 
         {/* 2 — Barber */}
         <Card className="p-5">
-          {stepLabel(2, "Choose your barber", !!barber, !!service && !barber)}
+          {stepLabel(2, t.book.chooseBarber, !!barber, !!service && !barber)}
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {barbers.map((b) => (
               <button
@@ -327,7 +330,7 @@ export function BookingFlow({ services, barbers, initialBarberSlug }: Props) {
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{b.name}</span>
                   <span className="block text-xs text-cream-muted">
-                    {barberId === b.id ? "Selected" : "Available"}
+                    {barberId === b.id ? t.book.selected : t.book.available}
                   </span>
                 </span>
               </button>

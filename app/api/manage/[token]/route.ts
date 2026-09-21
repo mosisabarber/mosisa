@@ -188,7 +188,7 @@ export async function PATCH(
     `Rescheduled - ${service.name} with ${appointment.barber.name}`,
     `<p>Hi ${appointment.customerName},</p>
      <p>Your appointment has been moved to:</p>
-     <p><strong>${newDateKey} at ${newStartTime}</strong> (Addis Ababa) with ${appointment.barber.name}</p>
+     <p><strong>${newDateKey} at ${newStartTime}</strong> (Harar) with ${appointment.barber.name}</p>
      <p><a href="${manageUrl}">Manage your appointment</a></p>`
   );
   void sendSMS(

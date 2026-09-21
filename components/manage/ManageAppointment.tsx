@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -6,6 +6,10 @@ import { Badge, Button, Card, Modal, StateMessage } from "@/components/ui";
 import { DayStripPicker } from "@/components/booking/DayStripPicker";
 import { TimeSlotGrid } from "@/components/booking/TimeSlotGrid";
 import { LateChangeWarning } from "./LateChangeWarning";
+import type { Dictionary } from "@/lib/i18n/dictionaries/en";
+import type { Locale } from "@/lib/i18n/config";
+import { localeHref } from "@/lib/i18n/links";
+import { formatTemplate } from "@/lib/i18n/format";
 
 export interface ManagedAppointmentView {
   appointment_id: string;
@@ -31,6 +35,8 @@ export interface ManagedAppointmentView {
 export interface ManageAppointmentProps {
   token: string;
   appointment: ManagedAppointmentView;
+  dictionary: Dictionary;
+  locale: Locale;
 }
 
 type Mode = "view" | "reschedule";
@@ -47,15 +53,18 @@ function addisPlusDaysKey(days: number): string {
 }
 
 /**
- * Guest appointment management (§7 `/manage/[token]`): view, reschedule and
- * cancel. The 12-hour rule is a soft warning only — every action stays enabled.
+ * Guest appointment management (Â§7 `/manage/[token]`): view, reschedule and
+ * cancel. The 12-hour rule is a soft warning only â€” every action stays enabled.
  */
 export function ManageAppointment({
   token,
   appointment: initial,
+  dictionary: t,
+  locale,
 }: ManageAppointmentProps) {
   const [appointment, setAppointment] = useState(initial);
   const [mode, setMode] = useState<Mode>("view");
+  const booksHref = localeHref(locale, "/book");
 
   // Reschedule state
   const [days, setDays] = useState<string[]>([]);
@@ -94,7 +103,7 @@ export function ManageAppointment({
         message?: string;
       };
       if (!res.ok) {
-        setSlotsError(body.message ?? "Could not load available times.");
+        setSlotsError(body.message ?? t.manage.loadTimesFailedBody);
         return;
       }
       const nextDays = body.days ?? [];
@@ -103,7 +112,7 @@ export function ManageAppointment({
         Object.fromEntries(nextDays.map((d) => [d.date, d.slots]))
       );
     } catch {
-      setSlotsError("Network problem — please try again.");
+      setSlotsError(t.manage.networkError);
     } finally {
       setLoadingSlots(false);
     }
@@ -141,24 +150,20 @@ export function ManageAppointment({
         setActionError(
           body.message ??
             (body.error === "slot_no_longer_available"
-              ? "Sorry — that slot was just taken. Please pick another time."
-              : "Could not reschedule. Please try again.")
+              ? t.book.errors.slotTaken
+              : t.manage.rescheduleFailed)
         );
         if (body.error === "slot_no_longer_available") {
-          void loadAvailability(); // the grid is now stale — refresh it
+          void loadAvailability(); // the grid is now stale â€” refresh it
         }
         return;
       }
 
       if (body.appointment) setAppointment(body.appointment);
       setMode("view");
-      setSuccessMessage(
-        body.late_change
-          ? "Your appointment was moved. Note: this was a late change."
-          : "Your appointment was moved. We've emailed and texted the new time."
-      );
+      setSuccessMessage(body.late_change ? t.manage.movedLate : t.manage.movedBody);
     } catch {
-      setActionError("Network problem — please try again.");
+      setActionError(t.manage.networkError);
     } finally {
       setBusy(false);
     }
@@ -175,7 +180,7 @@ export function ManageAppointment({
       });
       const body = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) {
-        setActionError(body.message ?? "Could not cancel. Please try again.");
+        setActionError(body.message ?? t.manage.cancelFailed);
         return;
       }
       setAppointment({
@@ -185,11 +190,9 @@ export function ManageAppointment({
       });
       setConfirmCancel(false);
       setMode("view");
-      setSuccessMessage(
-        "Your appointment is cancelled. You can book again any time."
-      );
+      setSuccessMessage(t.manage.cancelledBody);
     } catch {
-      setActionError("Network problem — please try again.");
+      setActionError(t.manage.networkError);
     } finally {
       setBusy(false);
     }
@@ -212,7 +215,7 @@ export function ManageAppointment({
           <div>
             <h2 className="font-heading text-xl">{appointment.service.name}</h2>
             <p className="mt-0.5 text-sm text-cream-muted">
-              with {appointment.barber.name}
+              {t.manage.with} {appointment.barber.name}
             </p>
           </div>
           <Badge
@@ -224,28 +227,34 @@ export function ManageAppointment({
                   : "forest"
             }
           >
-            {cancelled ? "Cancelled" : "Confirmed"}
+            {cancelled ? t.manage.cancelled : t.manage.confirmed}
           </Badge>
         </div>
 
         <dl className="mt-4 grid gap-2 border-t border-line pt-4 text-sm">
-          <Row label="Date" value={appointment.display.date_key} />
+          <Row label={t.manage.when} value={appointment.display.date_key} />
           <Row
-            label="Time"
-            value={`${appointment.display.start_time} – ${appointment.display.end_time}`}
+            label={t.manage.time}
+            value={`${appointment.display.start_time} â€“ ${appointment.display.end_time}`}
           />
           <Row
-            label="Duration"
-            value={`${appointment.service.durationMinutes} min`}
+            label={t.manage.dur}
+            value={`${appointment.service.durationMinutes} ${t.common.minutes}`}
           />
-          <Row label="Price" value={`${appointment.service.price} ETB`} />
-          <Row label="Name" value={appointment.customer_name} />
-          <Row label="Phone" value={appointment.customer_phone} />
-          <Row label="Email" value={appointment.customer_email} />
+          <Row
+            label={t.manage.price}
+            value={`${appointment.service.price} ${t.common.birr}`}
+          />
+          <Row label={t.manage.customerName} value={appointment.customer_name} />
+          <Row label={t.manage.customerPhone} value={appointment.customer_phone} />
+          <Row label={t.manage.customerEmail} value={appointment.customer_email} />
         </dl>
 
-        <p className="mt-3 text-xs text-cream-muted/70">
-          Times shown in Addis Ababa time ({appointment.display.timezone}).
+        <p className="mt-3 text-xs text-cream-muted">
+          {formatTemplate(t.manage.timesInTimezone, {
+            place: t.meta.city,
+            timezone: appointment.display.timezone,
+          })}
         </p>
 
         {actionError && (
@@ -256,8 +265,8 @@ export function ManageAppointment({
 
         {cancelled ? (
           <div className="mt-4">
-            <Link href="/book">
-              <Button className="w-full">Book a new appointment</Button>
+            <Link href={booksHref}>
+              <Button className="w-full">{t.manage.bookAgain}</Button>
             </Link>
           </div>
         ) : (
@@ -269,14 +278,16 @@ export function ManageAppointment({
               }
               disabled={busy}
             >
-              {mode === "reschedule" ? "Stop rescheduling" : "Reschedule"}
+              {mode === "reschedule"
+                ? t.manage.stopRescheduling
+                : t.manage.reschedule}
             </Button>
             <Button
               variant="danger"
               onClick={() => setConfirmCancel(true)}
               disabled={busy}
             >
-              Cancel appointment
+              {t.manage.cancelAction}
             </Button>
           </div>
         )}
@@ -284,9 +295,9 @@ export function ManageAppointment({
 
       {mode === "reschedule" && !cancelled && (
         <Card>
-          <h3 className="font-heading text-lg">Pick a new time</h3>
+          <h3 className="font-heading text-lg">{t.manage.rescheduleTitle}</h3>
           <p className="mt-1 text-sm text-cream-muted">
-            Same barber, same service — choose a different slot.
+            {t.manage.rescheduleBody2}
           </p>
 
           <div className="mt-4">
@@ -295,7 +306,7 @@ export function ManageAppointment({
             ) : days.length === 0 && slotsError ? (
               <StateMessage
                 state="error"
-                title="Could not load times"
+                title={t.manage.loadTimesFailed}
                 description={slotsError}
                 action={
                   <Button
@@ -303,7 +314,7 @@ export function ManageAppointment({
                     variant="secondary"
                     onClick={loadAvailability}
                   >
-                    Try again
+                    {t.common.tryAgain}
                   </Button>
                 }
               />
@@ -342,14 +353,14 @@ export function ManageAppointment({
               onClick={() => void loadAvailability()}
               disabled={loadingSlots || busy}
             >
-              Refresh times
+              {t.manage.refreshTimes}
             </Button>
             <Button
               onClick={() => void submitReschedule()}
               loading={busy}
               disabled={!selectedSlot || loadingSlots}
             >
-              Confirm new time
+              {t.manage.confirmNewTime}
             </Button>
           </div>
         </Card>
@@ -358,11 +369,15 @@ export function ManageAppointment({
       <Modal
         open={confirmCancel}
         onClose={() => setConfirmCancel(false)}
-        title="Cancel this appointment?"
+        title={t.manage.cancelTitle}
       >
         <p className="text-sm leading-6 text-cream-muted">
-          {appointment.service.name} with {appointment.barber.name} on{" "}
-          {appointment.display.date_key} at {appointment.display.start_time}.
+          {formatTemplate(t.manage.summaryLine, {
+            service: appointment.service.name,
+            barber: appointment.barber.name,
+            date: appointment.display.date_key,
+            time: appointment.display.start_time,
+          })}
         </p>
 
         {appointment.late_change && (
@@ -376,7 +391,7 @@ export function ManageAppointment({
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <Button variant="secondary" onClick={() => setConfirmCancel(false)}>
-            Keep it
+            {t.manage.cancelKeep}
           </Button>
           <Button
             variant="danger"
