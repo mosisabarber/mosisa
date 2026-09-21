@@ -183,7 +183,7 @@ export async function PATCH(
   const newDateKey = addisDateKey(startMs);
   const newStartTime = formatAddisTime(startMs);
 
-  void sendEmail(
+    const emailResult = await sendEmail(
     appointment.customerEmail,
     `Rescheduled - ${service.name} with ${appointment.barber.name}`,
     `<p>Hi ${appointment.customerName},</p>
@@ -191,10 +191,17 @@ export async function PATCH(
      <p><strong>${newDateKey} at ${newStartTime}</strong> (Harar) with ${appointment.barber.name}</p>
      <p><a href="${manageUrl}">Manage your appointment</a></p>`
   );
-  void sendSMS(
+  if (!emailResult.success) {
+    console.error("[manage] email notification failed:", emailResult.error);
+  }
+
+  const smsResult = await sendSMS(
     appointment.customerPhone,
     `Mosisa Barber Shop: moved to ${newDateKey} ${newStartTime}. Manage: ${manageUrl}`
   );
+  if (!smsResult.success) {
+    console.error("[manage] sms notification failed:", smsResult.error);
+  }
 
   const refreshed = await getAppointmentByToken(token);
   return NextResponse.json({
@@ -252,22 +259,27 @@ export async function DELETE(
   const startTime = formatAddisTime(appointment.startDatetime.getTime());
   const change = classifyChange(appointment.startDatetime);
 
-  void sendEmail(
+    const emailResult = await sendEmail(
     appointment.customerEmail,
     `Cancelled - ${appointment.service.name}`,
     `<p>Hi ${appointment.customerName},</p>
      <p>Your appointment on <strong>${dateKey} at ${startTime}</strong> with ${appointment.barber.name} has been cancelled.</p>
-     ${
-       change.isLate
-         ? "<p>This was a late cancellation (inside 12 hours). Thanks for letting us know.</p>"
-         : ""
-     }
+     ${change.isLate
+       ? "<p>This was a late cancellation (inside 12 hours). Thanks for letting us know.</p>"
+       : ""}
      <p>Book again any time: <a href="${siteUrl}/book">${siteUrl}/book</a></p>`
   );
-  void sendSMS(
+  if (!emailResult.success) {
+    console.error("[manage] email notification failed:", emailResult.error);
+  }
+
+  const smsResult = await sendSMS(
     appointment.customerPhone,
     `Mosisa Barber Shop: your ${dateKey} ${startTime} appointment is cancelled. Book again: ${siteUrl}/book`
   );
+  if (!smsResult.success) {
+    console.error("[manage] sms notification failed:", smsResult.error);
+  }
 
   return NextResponse.json({
     ok: true,

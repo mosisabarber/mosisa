@@ -157,7 +157,7 @@ export async function POST(request: Request) {
     location: "Mosisa Barber Shop, Harar",
   });
 
-  void sendEmail(
+    const emailResult = await sendEmail(
     input.customer_email,
     `Your booking - ${service.name} with ${barber.name}`,
     `<p>Hi ${input.customer_name},</p>
@@ -167,11 +167,17 @@ export async function POST(request: Request) {
      <p><a href="${manageUrl}">Manage your appointment</a> (view, reschedule, cancel)</p>
      <p><a href="data:text/calendar;base64,${Buffer.from(ics).toString("base64")}">Add to calendar (.ics)</a></p>`
   );
+  if (!emailResult.success) {
+    console.error("[booking] email notification failed:", emailResult.error);
+  }
 
-  void sendSMS(
+  const smsResult = await sendSMS(
     input.customer_phone,
     `Mosisa Barber Shop: ${service.name} with ${barber.name} on ${startKey} ${startTime}. Manage: ${manageUrl}`
   );
+  if (!smsResult.success) {
+    console.error("[booking] sms notification failed:", smsResult.error);
+  }
 
   // 6 — response
   return NextResponse.json(
