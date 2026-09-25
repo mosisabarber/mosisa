@@ -35,6 +35,7 @@ const am: Dictionary = {
     openMenu: "ምናሌ ክፈት",
     closeMenu: "ምናሌ ዝጋ",
     language: "ቋንቋ",
+    theme: "የቀን/የሌሊት ገጽታ ቀይር",
   },
 
   common: {
@@ -57,7 +58,7 @@ const am: Dictionary = {
 
   home: {
     heroEyebrow: "ሐረር · ኢትዮጵያ",
-    heroTitle: "ጥሩ ተመልከት። በሰከንዶች ያስይዙ።",
+    heroTitle: "ዘመናዊ ቁርጥ። በሰከንዶች ያስይዙ።",
     heroSubtitle:
       "ባህላዊ የፀጉር ሳሎን ከዘመናዊ አገልግሎት ጋር። ባለሙያዎን ይምረጡ፣ ሰዓትዎን ይምረጡ፣ ወንበርዎ ከመድረስዎ በፊት ተይዟል።",
     heroPrimaryCta: "ቀጠሮ ያስይዙ",

@@ -5,14 +5,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import Image from "next/image";
 import type { Barber } from "@/lib/admin-data";
-import { Button, Input, Modal } from "@/components/ui";
+import { Button, Input, Modal, Spinner } from "@/components/ui";
 
 export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?: Barber }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(barber?.name ?? "");
   const [slug, setSlug] = useState(barber?.slug ?? "");
@@ -21,6 +24,40 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
   const [buffer, setBuffer] = useState(barber?.bufferMinutes?.toString() ?? "0");
   const [specialties, setSpecialties] = useState(barber?.specialties?.join(", ") ?? "");
   const [isActive, setIsActive] = useState(barber?.isActive ?? true);
+
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.message ?? `Upload failed (${res.status})`);
+      } else {
+        const data = await res.json();
+        if (data.url) {
+          setPhotoUrl(data.url);
+        }
+      }
+    } catch {
+      setError("Network error while uploading photo.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,7 +116,84 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
           <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
           <Input label="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} required />
           <Input label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
-          <Input label="Photo URL" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} />
+
+          {/* Photo Upload & Preview */}
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-cream-muted">Photo</span>
+
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-surface">
+                {photoUrl ? (
+                  <Image
+                    src={photoUrl}
+                    alt={name || "Barber photo"}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="text-xs text-cream-muted">No photo</span>
+                )}
+                {uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-charcoal/80">
+                    <Spinner className="h-5 w-5 text-brass" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-1 flex-col gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploading ? "Uploading…" : photoUrl ? "Change photo" : "Upload photo"}
+                  </Button>
+
+                  {photoUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => setPhotoUrl("")}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-cream-muted">
+                  JPG, PNG, WebP or AVIF (Max 5MB)
+                </p>
+              </div>
+            </div>
+
+            {/* Direct URL input fallback */}
+            <details className="mt-1 text-xs text-cream-muted">
+              <summary className="cursor-pointer hover:text-cream">Or enter image URL manually</summary>
+              <div className="mt-2">
+                <Input
+                  hideLabel
+                  placeholder="https://..."
+                  value={photoUrl}
+                  onChange={(e) => setPhotoUrl(e.target.value)}
+                />
+              </div>
+            </details>
+          </div>
+
           <Input
             label="Buffer (minutes)"
             type="number"

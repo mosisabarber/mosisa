@@ -37,10 +37,14 @@ export async function POST(request: Request) {
   const body = raw as Record<string, unknown>;
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
-  const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+  const rawSlug = typeof body.slug === "string" ? body.slug.trim() : "";
+  const slug = rawSlug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   if (!name || !slug) {
     return NextResponse.json(
-      { error: "invalid_input", message: "name and slug are required" },
+      { error: "invalid_input", message: "name and a valid slug are required" },
       { status: 400 }
     );
   }
@@ -95,7 +99,13 @@ export async function PATCH(request: Request) {
   const body = raw as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
   if (typeof body.name === "string") patch.name = body.name.trim();
-  if (typeof body.slug === "string") patch.slug = body.slug.trim();
+  if (typeof body.slug === "string") {
+    patch.slug = body.slug
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
   if (typeof body.bio === "string") patch.bio = body.bio;
   if (typeof body.photoUrl === "string") patch.photoUrl = body.photoUrl;
   if (typeof body.bufferMinutes === "number") patch.bufferMinutes = body.bufferMinutes;

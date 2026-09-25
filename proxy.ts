@@ -20,11 +20,17 @@ import {
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // Already prefixed with a supported locale → let it through.
+  // Already prefixed with a supported locale → let it through, but tag the
+  // request so the root layout can read the locale (it renders the single
+  // <html lang> + font variables for every route).
   const hasLocale = isLocale(
     pathname.split("/")[1] // '/am/foo' → 'am'
   );
-  if (hasLocale) return NextResponse.next();
+  if (hasLocale) {
+    const res = NextResponse.next();
+    res.headers.set("x-locale", pathname.split("/")[1]);
+    return res;
+  }
 
   const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
   const locale = isLocale(cookieLocale)
@@ -35,7 +41,9 @@ export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   url.pathname = `/${locale}${pathname === "/" ? "" : pathname}`;
   url.search = search;
-  return NextResponse.redirect(url);
+  const res = NextResponse.redirect(url);
+  res.headers.set("x-locale", locale);
+  return res;
 }
 
 export const config = {

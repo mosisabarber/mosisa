@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Moon path diagnostic — mosisa ThemeToggle</title>
+  </head>
+  <body style="font-family: system-ui; background: #f6f4ee; padding: 24px; color: #201f1b">
+    <h1 style="font-size: 18px">Moon icon path diagnostic</h1>
+    <p style="max-width: 720px">
+      Each cell is a 20x20 viewport scaled to 80x80. If a cell looks empty/blank,
+      that path renders as nothing. Left = the path currently in
+      components/ThemeToggle.tsx. Right = corrected geometry.
+    </p>
+    <div style="display: flex; gap: 48px; align-items: start">
+      <div>
+        <h2 style="font-size: 14px">CURRENT (broken)</h2>
+        <svg width="80" height="80" viewBox="0 0 20 20" fill="#201f1b"
+             style="border: 1px solid #999; background: #fff">
+          <path d="M17.3 13.4A7.5 7.5 0 0 1 6.6 2.7a7.5 7.5 0 1 0 10.7 10.7Z" />
+        </svg>
+        <p style="font-size: 12px; max-width: 200px">
+          radius 7.5 &lt; required 7.566 — browser scales/degrades it
+        </p>
+      </div>
+      <div>
+        <h2 style="font-size: 14px">FIXED A (keep 20-box)</h2>
+        <svg width="80" height="80" viewBox="0 0 20 20" fill="#201f1b"
+             style="border: 1px solid #999; background: #fff">
+          <path d="M17.3 13.4A8 8 0 0 1 6.6 2.7A8 8 0 1 0 17.3 13.4Z" />
+        </svg>
+        <p style="font-size: 12px; max-width: 200px">
+          same endpoints, radius 7.5 -&gt; 8 (min needed 7.566) = valid
+        </p>
+      </div>
+      <div>
+        <h2 style="font-size: 14px">FIXED C (24-box)</h2>
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="#201f1b"
+             style="border: 1px solid #999; background: #fff">
+          <path d="M13 3A7.5 7.5 0 0 0 21 11A9.5 9.5 0 1 1 13 3Z" />
+        </svg>
+        <p style="font-size: 12px; max-width: 200px">
+          clean crescent, both radii valid (7.5 and 9.5)
+        </p>
+      </div>
+      <div>
+        <h2 style="font-size: 14px">CURRENT, on dark chip</h2>
+        <svg width="80" height="80" viewBox="0 0 20 20" fill="#f0ebe0"
+             style="border: 1px solid #999; background: #141614">
+          <path d="M17.3 13.4A7.5 7.5 0 0 1 6.6 2.7a7.5 7.5 0 1 0 10.7 10.7Z" />
+        </svg>
+        <p style="font-size: 12px; max-width: 200px">
+          same broken path, light ink (this is the invisible one)
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

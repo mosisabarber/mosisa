@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Input, StateMessage } from "@/components/ui";
 import { DayStripPicker } from "@/components/booking/DayStripPicker";
 import { TimeSlotGrid } from "@/components/booking/TimeSlotGrid";
+import type { TakenSlot } from "@/components/booking/TimeSlotGrid";
 import { BookingSummary } from "@/components/booking/BookingSummary";
 import { BookingConfirmationModal } from "@/components/booking/BookingConfirmationModal";
 import { bookingInputSchema } from "@/lib/booking/validation";
@@ -87,8 +88,12 @@ export function BookingFlow({
 
   const [windowStartMs, setWindowStartMs] = useState<number | null>(null);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, string[]>>({});
+  const [takenByDate, setTakenByDate] = useState<Record<string, TakenSlot[]>>({});
+  const [closedDates, setClosedDates] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  /** Bumped to re-run the availability fetch without changing the window. */
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
@@ -151,7 +156,12 @@ export function BookingFlow({
       .then(async (res) => {
         if (!res.ok) throw new Error(`availability_${res.status}`);
         return (await res.json()) as {
-          days: { date: string; slots: string[] }[];
+          days: {
+            date: string;
+            slots: string[];
+            takenSlots?: TakenSlot[];
+            closed?: boolean;
+          }[];
         };
       })
       .then((data) => {
@@ -159,6 +169,25 @@ export function BookingFlow({
           const next = { ...prev };
           for (const day of data.days) next[day.date] = day.slots;
           return next;
+        });
+        setTakenByDate((prev) => {
+          const next = { ...prev };
+          for (const day of data.days) next[day.date] = day.takenSlots ?? [];
+          return next;
+        });
+        setClosedDates(
+          data.days.filter((day) => day.closed).map((day) => day.date)
+        );
+
+        // If the chosen time was taken in the meantime (or is no longer
+        // offered), drop the selection rather than submitting a dead slot —
+        // and tell the customer why instead of letting it vanish silently.
+        setSelectedSlot((current) => {
+          if (!current) return current;
+          const day = data.days.find((d) => d.date === addisDateKey(Date.parse(current)));
+          if (!day || day.slots.includes(current)) return current;
+          setSubmitError(t.book.errors.slotTaken);
+          return null;
         });
       })
       .catch((err: unknown) => {
@@ -170,7 +199,7 @@ export function BookingFlow({
       });
 
     return () => controller.abort();
-  }, [windowStartMs, serviceId, barberId]);
+  }, [windowStartMs, serviceId, barberId, refreshNonce]);
 
   const canAdvanceWindow =
     windowStartMs !== null &&
@@ -181,10 +210,14 @@ export function BookingFlow({
   const canGoBackWindow =
     windowStartMs !== null && windowStartMs > Date.now() + DAY_MS;
 
+  /**
+   * Re-run the availability fetch for the window currently on screen (e.g.
+   * after a 409 race). A nonce bumps the effect's dependency array so the
+   * grid refreshes in place — resetting `windowStartMs` would jump the user
+   * back to today and make their chosen time appear to vanish.
+   */
   function refreshAfterRejection() {
-    // Force the availability effect to re-fetch (e.g. after a 409 race).
-    setWindowStartMs(null);
-    setTimeout(() => setWindowStartMs(Date.now()), 0);
+    setRefreshNonce((n) => n + 1);
   }
 
   async function submit() {
@@ -350,12 +383,19 @@ export function BookingFlow({
             <DayStripPicker
               days={days}
               slotsByDate={slotsByDate}
+              closedDates={closedDates}
               value={selectedDate}
               disabled={!service || !barber}
               todayKey={addisDateKey(Date.now())}
               onSelect={(dateKey) => {
                 setSelectedDate(dateKey);
-                setSelectedSlot(null);
+                // Only drop the chosen time if it belongs to a different day —
+                // flipping between days must not silently lose the selection.
+                setSelectedSlot((current) =>
+                  current && addisDateKey(Date.parse(current)) === dateKey
+                    ? current
+                    : null
+                );
               }}
             />
 
@@ -404,6 +444,7 @@ export function BookingFlow({
               <TimeSlotGrid
                 dateKey={selectedDate}
                 slots={selectedDate ? (slotsByDate[selectedDate] ?? []) : []}
+                takenSlots={selectedDate ? (takenByDate[selectedDate] ?? []) : []}
                 value={selectedSlot}
                 loading={availabilityLoading}
                 error={availabilityError}

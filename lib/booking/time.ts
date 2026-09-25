@@ -21,9 +21,17 @@ export function addisDateKey(instant: Date | number): string {
   return shifted(instant).toISOString().slice(0, 10);
 }
 
-/** Day of week (0=Sunday .. 6=Saturday) for an Addis calendar date. */
+/**
+ * Day of week (0=Sunday .. 6=Saturday) for an Addis calendar date.
+ *
+ * Uses Addis *noon*, not midnight: `getUTCDay()` reads the UTC weekday of the
+ * instant, and Addis midnight (+03:00) falls on the previous UTC day — so
+ * `new Date('2026-09-25T00:00:00+03:00').getUTCDay()` is Thursday, not Friday.
+ * Noon is safely inside the Addis day under any fixed offset, so the UTC
+ * weekday always matches the Addis weekday the key denotes.
+ */
 export function addisDayOfWeek(dateKey: string): number {
-  return new Date(`${dateKey}T00:00:00+03:00`).getUTCDay();
+  return new Date(`${dateKey}T12:00:00+03:00`).getUTCDay();
 }
 
 /** UTC ms of Addis midnight for a 'YYYY-MM-DD' calendar date. */

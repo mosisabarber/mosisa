@@ -4,10 +4,26 @@ import { addisDayOfWeek } from "@/lib/booking/time";
 import { cn } from "@/lib/cn";
 
 const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 export interface DayStripPickerProps {
   days: string[]; // 'YYYY-MM-DD' Addis calendar dates (within the 60-day cap)
   slotsByDate: Record<string, string[]>;
+  /** Dates the shop/barber is closed for (no working hours that weekday). */
+  closedDates?: string[];
   value: string | null;
   onSelect: (dateKey: string) => void;
   disabled?: boolean;
@@ -25,11 +41,13 @@ export interface DayStripPickerProps {
 export function DayStripPicker({
   days,
   slotsByDate,
+  closedDates = [],
   value,
   onSelect,
   disabled = false,
   todayKey,
 }: DayStripPickerProps) {
+  const closed = new Set(closedDates);
   return (
     <div
       className={cn(
@@ -40,26 +58,25 @@ export function DayStripPicker({
       aria-label="Choose a date"
     >
       {days.map((dateKey) => {
-        const count = slotsByDate[dateKey]?.length;
+        const slots = slotsByDate[dateKey];
+        const count = slots?.length;
         const isSelected = value === dateKey;
-        const soldOut = count === 0;
+        // Distinguish the three empty states: unknown (still fetching),
+        // closed for the day, and open-but-fully-booked. Only the last two
+        // should look unavailable.
+        const isLoadingDay = count === undefined;
+        const isClosed = closed.has(dateKey);
+        const soldOut = !isLoadingDay && !isClosed && count === 0;
+        const unavailable = isClosed || soldOut;
         const dow = WEEKDAY[addisDayOfWeek(dateKey)];
         const dayNum = Number(dateKey.slice(8, 10));
-        const month = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ][Number(dateKey.slice(5, 7)) - 1];
+        const month = MONTH[Number(dateKey.slice(5, 7)) - 1];
         const isToday = dateKey === todayKey;
+        const stateLabel = isClosed
+          ? "closed"
+          : soldOut
+            ? "fully booked"
+            : undefined;
 
         return (
           <button
@@ -68,16 +85,16 @@ export function DayStripPicker({
             role="option"
             aria-selected={isSelected}
             aria-label={`${dow} ${dayNum} ${month}${
-              soldOut ? " — fully booked" : ""
+              stateLabel ? ` — ${stateLabel}` : ""
             }`}
-            disabled={soldOut}
+            disabled={unavailable}
             onClick={() => onSelect(dateKey)}
             className={cn(
               "flex min-h-16 flex-col items-center justify-center rounded-lg border px-1 py-2 transition-colors",
               isSelected
                 ? "border-brass bg-brass/15 text-brass-strong"
                 : "border-line bg-surface text-cream-muted hover:border-brass/40 hover:text-cream",
-              soldOut && "cursor-not-allowed opacity-35 hover:border-line"
+              unavailable && "cursor-not-allowed opacity-35 hover:border-line"
             )}
           >
             <span className="text-[11px] uppercase tracking-wide">
@@ -92,9 +109,9 @@ export function DayStripPicker({
             <span
               className={cn(
                 "mt-1 h-1.5 w-1.5 rounded-full",
-                count === undefined
+                isLoadingDay
                   ? "bg-cream-muted/30"
-                  : soldOut
+                  : unavailable
                     ? "bg-transparent"
                     : isSelected
                       ? "bg-brass"

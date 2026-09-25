@@ -16,6 +16,8 @@
     "test:validation": "node scripts/test-validation.mjs",
     "test:buffer": "node scripts/test-buffer.mjs",
     "test:horizon": "node scripts/test-horizon.mjs",
+    "test:weekday": "node scripts/test-weekday.mjs",
+    "test:taken": "node scripts/test-taken-slots.mjs",
     "test": "node scripts/test-validation.mjs && node scripts/test-buffer.mjs && node scripts/test-horizon.mjs && node scripts/test-concurrency-strict.mjs",
     "test:booking": "node scripts/smoke-booking.mjs",
     "test:manage": "node scripts/smoke-manage.mjs"
@@ -23,6 +25,7 @@
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.5",
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.8.0",
     "better-auth": "^1.7.5",
     "drizzle-orm": "^0.45.2",
     "next": "16.3.5",

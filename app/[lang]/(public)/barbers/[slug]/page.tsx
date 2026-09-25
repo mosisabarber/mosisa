@@ -14,7 +14,8 @@ export const revalidate = 60;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const barber = await getBarberBySlug(slug);
+  const decodedSlug = decodeURIComponent(slug);
+  const barber = await getBarberBySlug(decodedSlug);
   if (!barber) return { title: "Barber not found" };
   return {
     title: `${barber.name} — Barber`,
@@ -36,7 +37,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BarberPage({ params }: Props) {
   const { slug } = await params;
-  const barber = await getBarberBySlug(slug);
+  const decodedSlug = decodeURIComponent(slug);
+  const barber = await getBarberBySlug(decodedSlug);
   if (!barber) notFound();
 
   const others = (await getActiveBarbers()).filter((b) => b.id !== barber.id);

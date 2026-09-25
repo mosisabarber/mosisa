@@ -32,12 +32,97 @@
   --color-warning: #d9964a;
 }
 
+/* ---------------------------------------------------------------------------
+ * Light theme — class-scoped token override. Every component uses semantic
+ * utilities (bg-charcoal, text-cream, border-line…) which resolve to the
+ * variables above, so overriding them under `html.light` flips the whole
+ * site without touching component code. Toggled by components/ThemeToggle;
+ * applied pre-paint by the inline script in the layouts (no dark flash).
+ * ------------------------------------------------------------------------- */
+html.light {
+  /* base + surfaces: paper instead of charcoal */
+  --color-charcoal: #f6f4ee;
+  --color-surface: #ffffff;
+  --color-surface-raised: #efebdf;
+  --color-line: #ddd6c6;
+
+  /* supporting accents: lifted so they hold contrast on white */
+  --color-forest: #3d6b4e;
+  --color-forest-bright: #4d8462;
+  --color-navy: #33506b;
+  --color-navy-bright: #416283;
+
+  /* highlight: deepened brass keeps AA contrast on light backgrounds */
+  --color-brass: #a97f1e;
+  --color-brass-strong: #8a6512;
+
+  /* text: near-black on paper */
+  --color-cream: #201f1b;
+  --color-cream-muted: #6b675c;
+
+  /* feedback: darkened for contrast on light surfaces */
+  --color-success: #2e7d4f;
+  --color-error: #b0402f;
+  --color-warning: #a4641c;
+}
+
+/* Skip link pairs brass bg with charcoal text; in light mode charcoal becomes
+   paper, so pin the label to white for legibility. */
+html.light .skip-link {
+  color: #ffffff;
+}
+
 /* Typography: classic serif for headlines (heritage/craft/trust),
    clean sans-serif for body/UI (clarity). Fonts are wired via next/font
    in app/layout.tsx and referenced here by their CSS variables. */
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-serif-display), ui-serif, Georgia, serif;
+}
+
+/* Amharic typography (html[lang="am"] — the locale `lang` is set by the root
+   layout from the `x-locale` header; see app/layout.tsx + proxy.ts).
+   Custom local faces from public/fonts: Loga Comic for headings, Ebrima for
+   body/UI. English keeps Playfair + Geist.
+
+   IMPORTANT: these must target the UTILITY CLASSES, not just the theme
+   variables. Tailwind's `@theme inline` inlines the value into the utility at
+   build time, so the emitted CSS is:
+       .font-heading { font-family: var(--font-serif-display), … }
+       .font-sans    { font-family: var(--font-geist-sans), … }
+   — i.e. the utilities hard-code the English faces and never read
+   --font-heading / --font-sans at use time. Overriding only the variable on
+   `html` therefore does nothing for any element carrying `font-heading`
+   (every h1/h2/card title/price in this app). The selectors below outrank
+   `.font-heading` (0,2,1 vs 0,1,0) and set font-family directly. */
+html[lang="am"] body,
+html[lang="am"] .font-sans {
+  font-family: var(--font-ebrima), "Noto Sans Ethiopic", ui-sans-serif,
+    system-ui, sans-serif;
+}
+
+html[lang="am"] .font-heading,
+html[lang="am"] .font-heading * {
+  font-family: var(--font-loga-comic), "Noto Serif Ethiopic", ui-serif,
+    Georgia, serif;
+}
+
+/* Headings that carry no `font-heading` utility still get the Amharic face. */
+html[lang="am"] h1,
+html[lang="am"] h2,
+html[lang="am"] h3,
+html[lang="am"] h4 {
+  font-family: var(--font-loga-comic), "Noto Serif Ethiopic", ui-serif,
+    Georgia, serif;
+}
+
+/* Keep the variable definitions in sync too, so any direct
+   `font-family: var(--font-sans|--heading)` use also switches. */
+html[lang="am"] {
+  --font-sans: var(--font-ebrima), "Noto Sans Ethiopic", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-heading: var(--font-loga-comic), "Noto Serif Ethiopic", ui-serif,
+    Georgia, serif;
 }
 
 body {

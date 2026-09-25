@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLocaleHref } from "@/lib/i18n/links";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 
@@ -30,10 +31,9 @@ export function NavMenu({ t }: { t: Dictionary }) {
     { href: "/contact", label: t.nav.contact },
   ];
 
-  // Close the menu whenever the route changes
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Menu closes on navigation via each link's onClick (below) rather than an
+  // effect watching `pathname` — setState inside an effect causes cascading
+  // renders (react-hooks/set-state-in-effect).
 
   const isCurrent = (path: string) => pathname === href(path);
 
@@ -68,6 +68,7 @@ export function NavMenu({ t }: { t: Dictionary }) {
           </nav>
 
           <LanguageSwitcher t={t} />
+          <ThemeToggle label={t.nav.theme} />
 
           {/* Persistent Book Now — visible on every page, all breakpoints */}
           <Link href={href("/book")}>
@@ -112,6 +113,7 @@ export function NavMenu({ t }: { t: Dictionary }) {
             <Link
               key={link.href}
               href={href(link.href)}
+              onClick={() => setOpen(false)}
               aria-current={isCurrent(link.href) ? "page" : undefined}
               className={cn(
                 "block rounded-md px-3 py-2.5 text-sm",

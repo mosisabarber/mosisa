@@ -32,9 +32,38 @@ import {
 
 export const TIMEZONE = "Africa/Addis_Ababa";
 
+/** Why a time on a given day cannot be booked. */
+export type TakenReason = "booked" | "blocked";
+
+/** A non-bookable time, surfaced so the UI can show it struck through. */
+export interface TakenSlot {
+  /** 'HH:mm' in Addis wall time — same label the free slots use. */
+  time: string;
+  /**
+   * `booked` = a confirmed appointment actually occupies this time.
+   * `blocked` = no appointment here, but the barber's buffer or a blocked
+   * time removes it. Shown as "Unavailable", never as "Booked" — labelling a
+   * buffer gap as booked would be a lie.
+   */
+  reason: TakenReason;
+}
+
 export interface DayAvailability {
   date: string;
-  slots: string[]; // ISO datetimes with +03:00 offset
+  slots: string[]; // ISO datetimes with +03:00 offset — bookable times ONLY
+  /**
+   * Times that exist within the day's working hours but cannot be booked,
+   * so the picker can render them struck through instead of silently hiding
+   * them. Excludes past times (they are simply not shown) and never overlaps
+   * `slots`.
+   */
+  takenSlots: TakenSlot[];
+  /**
+   * True when the shop/barber has no working hours that weekday (or the barber
+   * is off) — distinct from "open but fully booked", so the picker can label
+   * a closed day instead of implying every slot was taken.
+   */
+  closed: boolean;
 }
 
 export interface AvailabilityResult {
@@ -78,6 +107,20 @@ function subtractIntervals(base: Interval[], cuts: Interval[]): Interval[] {
     result = next;
   }
   return result;
+}
+
+/**
+ * Walk a base interval at the service's duration granularity and collect the
+ * instants that fall inside it. Mirrors the slot stepping in
+ * `computeAvailability` exactly, which is why callers must pass the day's
+ * *working-hours* intervals rather than a cut: the grid is phased off the
+ * working-hours start, so stepping from a cut boundary would yield times that
+ * never line up with the free slots.
+ */
+function timesWithin(iv: Interval, durationMs: number): number[] {
+  const out: number[] = [];
+  for (let s = iv.start; s + durationMs <= iv.end; s += durationMs) out.push(s);
+  return out;
 }
 
 /**
@@ -193,7 +236,9 @@ export async function computeAvailability(
     }
 
     if (dayBase.length === 0) {
-      days.push({ date: dateKey, slots: [] }); // closed day
+      // Closed day: no working hours at all, so there is nothing to strike
+      // through either — the picker labels the whole day as closed.
+      days.push({ date: dateKey, slots: [], takenSlots: [], closed: true });
       continue;
     }
 
@@ -226,20 +271,58 @@ export async function computeAvailability(
       ...appointmentCuts,
     ]);
 
-    // Rule 5: duration granularity; Rule 7: no slots in the past
-    const seen = new Set<number>();
-    const slots: string[] = [];
-    for (const iv of free) {
-      for (let s = iv.start; s + durationMs <= iv.end; s += durationMs) {
-        if (seen.has(s)) continue;
-        seen.add(s);
-        if (s <= nowUtcMs) continue; // past (Addis now)
-        slots.push(buildAddisIso(dateKey, formatAddisTime(s)));
-      }
-    }
-    slots.sort();
+    /**
+     * True when a real confirmed appointment occupies this time. Used to tell
+     * "Booked" apart from "Unavailable": a time removed only by the barber's
+     * buffer or a blocked time has no appointment in it, so calling it booked
+     * would be wrong.
+     */
+    const overlapsAppointments = (start: number) =>
+      busyAppointments.some(
+        (row) =>
+          row.startDatetime.getTime() < start + durationMs &&
+          row.endDatetime.getTime() > start
+      );
 
-    days.push({ date: dateKey, slots });
+    // Rule 5: duration granularity; Rule 7: no slots in the past
+    //
+    // The grid is generated from `dayBase` (working hours) so it keeps a stable
+    // phase, e.g. 09:00, 09:40, 10:20 with a 40-min service. Generating from the
+    // post-subtraction `free` intervals instead would re-phase the grid off each
+    // cut boundary (a 10-min buffer would shift every later slot to 09:50,
+    // 10:30, …) — that produced bogus times and hid genuinely free ones.
+    const gridTimes: number[] = [];
+    for (const iv of dayBase) {
+      for (const s of timesWithin(iv, durationMs)) gridTimes.push(s);
+    }
+    // Deduplicate and sort (overlapping working-hour rows can repeat times).
+    const uniqueGrid = [...new Set(gridTimes)].sort((a, b) => a - b);
+
+    /** A grid time is bookable when its whole duration fits inside `free`. */
+    const isFree = (start: number) =>
+      free.some((iv) => start >= iv.start && start + durationMs <= iv.end);
+
+    const slots: string[] = [];
+    const takenSlots: TakenSlot[] = [];
+
+    for (const s of uniqueGrid) {
+      if (s <= nowUtcMs) continue; // past (Addis now) — rule 7
+
+      if (isFree(s)) {
+        slots.push(buildAddisIso(dateKey, formatAddisTime(s)));
+        continue;
+      }
+
+      // Not bookable: report it so the UI can strike it through. `booked` only
+      // when a real appointment occupies the time — a buffer gap or blocked
+      // time reads as `blocked` rather than falsely claiming a booking.
+      takenSlots.push({
+        time: formatAddisTime(s),
+        reason: overlapsAppointments(s) ? "booked" : "blocked",
+      });
+    }
+
+    days.push({ date: dateKey, slots, takenSlots, closed: false });
   }
 
   return { timezone: TIMEZONE, days };

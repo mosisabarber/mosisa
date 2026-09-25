@@ -31,6 +31,7 @@ const en = {
     openMenu: "Open menu",
     closeMenu: "Close menu",
     language: "Language",
+    theme: "Toggle light / dark theme",
   },
 
   common: {

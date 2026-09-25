@@ -1,11 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Geist,
-  Geist_Mono,
-  Noto_Sans_Ethiopic,
-  Noto_Serif_Ethiopic,
-  Playfair_Display,
-} from "next/font/google";
 import { notFound } from "next/navigation";
 import "../globals.css";
 import { getSiteUrl } from "@/lib/seo";
@@ -13,43 +6,12 @@ import {
   LOCALE_TAGS,
   LOCALES,
   isLocale,
-  type Locale,
 } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-sans-mono",
-  subsets: ["latin"],
-});
-
-const serifDisplay = Playfair_Display({
-  variable: "--font-serif-display",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-/**
- * Ethiopic faces. Geist/Playfair have no Ethiopic glyphs, so Amharic would
- * fall back to whatever the OS has — or tofu. Both Noto Ethiopic families are
- * declared here and appended to the font stack for `[lang="am"]` in
- * globals.css, so English typography is untouched.
- */
-const ethiopicSans = Noto_Sans_Ethiopic({
-  variable: "--font-ethiopic-sans",
-  subsets: ["ethiopic"],
-  display: "swap",
-});
-
-const ethiopicSerif = Noto_Serif_Ethiopic({
-  variable: "--font-ethiopic-serif",
-  subsets: ["ethiopic"],
-  display: "swap",
-});
+// NOTE: fonts are declared in the root layout (app/layout.tsx), which renders
+// the single <html>. The Amharic local faces (Loga Comic, Ebrima) are applied
+// via `html[lang="am"]` in globals.css.
 
 const siteUrl = getSiteUrl();
 
@@ -118,16 +80,10 @@ export default async function LocaleRootLayout({
   // Unknown /xx/ → 404 rather than rendering an untranslated page.
   if (!isLocale(lang)) notFound();
 
-  const locale: Locale = lang;
-
-  return (
-    <html
-      lang={LOCALE_TAGS[locale]}
-      className={`${geistSans.variable} ${geistMono.variable} ${serifDisplay.variable} ${ethiopicSans.variable} ${ethiopicSerif.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col bg-charcoal font-sans text-cream">
-        {children}
-      </body>
-    </html>
-  );
+  // The single `<html>` (locale `lang` + font variables + theme-init script)
+  // is rendered by the root layout, which reads `x-locale` from proxy.ts.
+  // This layout must NOT render its own `<html>`/`<body>` — the browser only
+  // honours the first one, so a nested duplicate would discard the locale
+  // `lang` (breaking `html[lang="am"]`) and the font variables.
+  return <>{children}</>;
 }
