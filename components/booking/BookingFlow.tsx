@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Input, StateMessage } from "@/components/ui";
+import { Card, Input, StateMessage } from "@/components/ui";
 import { DayStripPicker } from "@/components/booking/DayStripPicker";
 import { TimeSlotGrid } from "@/components/booking/TimeSlotGrid";
 import type { TakenSlot } from "@/components/booking/TimeSlotGrid";
 import { BookingSummary } from "@/components/booking/BookingSummary";
-import { BookingConfirmationModal } from "@/components/booking/BookingConfirmationModal";
-import { bookingInputSchema } from "@/lib/booking/validation";
-import { addisDateKey, formatAddisTime, formatAddisDateLabel } from "@/lib/booking/time";
-import { formatTemplate } from "@/lib/i18n/format";
+import { BookingSuccess } from "@/components/booking/BookingSuccess";
+import { StepIndicator } from "@/components/booking/StepIndicator";
+import { WizardNav } from "@/components/booking/WizardNav";
+import { bookingInputSchema, ethiopianPhone } from "@/lib/booking/validation";
+import { addisDateKey, formatAddisDateLabel } from "@/lib/booking/time";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import type { Locale } from "@/lib/i18n/config";
+import { localeHref } from "@/lib/i18n/links";
 import { cn } from "@/lib/cn";
 
 export interface FlowService {
@@ -40,33 +42,17 @@ const DAY_MS = 24 * 3600 * 1000;
 const WINDOW_DAYS = 14; // day-strip shows two weeks at a time
 const MAX_HORIZON_DAYS = 60; // §4.6
 
+/** Wizard step order — must match the labels passed to `<StepIndicator>`. */
+const STEP = {
+  SERVICE: 0,
+  BARBER: 1,
+  TIME: 2,
+  DETAILS: 3,
+  CONFIRM: 4,
+} as const;
+
 function dateKeyFromMs(ms: number): string {
   return new Date(ms + 3 * 3600 * 1000).toISOString().slice(0, 10);
-}
-
-function stepLabel(n: number, title: string, done: boolean, active: boolean) {
-  return (
-    <p
-      className={cn(
-        "flex items-center gap-2 text-xs font-semibold uppercase tracking-widest",
-        active ? "text-brass" : done ? "text-cream-muted" : "text-cream-muted"
-      )}
-    >
-      <span
-        className={cn(
-          "flex h-5 w-5 items-center justify-center rounded-full border text-[11px]",
-          active
-            ? "border-brass text-brass"
-            : done
-              ? "border-cream-muted/60 text-cream-muted"
-              : "border-line text-cream-muted"
-        )}
-      >
-        {done ? "✓" : n}
-      </span>
-      {title}
-    </p>
-  );
 }
 
 export function BookingFlow({
@@ -85,6 +71,11 @@ export function BookingFlow({
   const [barberId, setBarberId] = useState<string | null>(
     preselectedBarber?.id ?? null
   );
+
+  // --- Wizard navigation -----------------------------------------------------
+  const [step, setStep] = useState<number>(STEP.SERVICE);
+  const [furthestStep, setFurthestStep] = useState<number>(STEP.SERVICE);
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   const [windowStartMs, setWindowStartMs] = useState<number | null>(null);
   const [slotsByDate, setSlotsByDate] = useState<Record<string, string[]>>({});
@@ -113,6 +104,102 @@ export function BookingFlow({
 
   const service = services.find((s) => s.id === serviceId) ?? null;
   const barber = barbers.find((b) => b.id === barberId) ?? null;
+
+  // --- Field validation (mirrors bookingInputSchema on the client) -----------
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    phone?: string;
+    email?: string;
+  }>({});
+
+  /** Validate the customer fields the same way the server will. */
+  function validateDetails(): { name?: string; phone?: string; email?: string } {
+    const errors: { name?: string; phone?: string; email?: string } = {};
+
+    if (name.trim().length < 2) {
+      errors.name = t.book.errors.nameRequired;
+    } else if (name.trim().length > 80) {
+      errors.name = t.book.errors.nameTooLong;
+    }
+
+    const parsedPhone = ethiopianPhone.safeParse(phone);
+    if (!phone.trim()) {
+      errors.phone = t.book.errors.phoneRequired;
+    } else if (!parsedPhone.success) {
+      errors.phone = t.book.errors.phoneInvalid;
+    }
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      errors.email = t.book.errors.emailRequired;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail.toLowerCase())) {
+      errors.email = t.book.errors.emailInvalid;
+    }
+
+    return errors;
+  }
+
+  const detailsValid = Object.keys(validateDetails()).length === 0;
+
+  /** Move to a step and record it as the furthest reached. */
+  function goToStep(next: number) {
+    setStep(next);
+    setFurthestStep((prev) => Math.max(prev, next));
+    // Drop the customer out of the error banner when leaving the confirm step.
+    if (next !== STEP.CONFIRM) setSubmitError(null);
+    // Bring the step indicator back into view on small screens.
+    topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
+  /** Validate the current step; returns true when Continue may proceed. */
+  function canContinueFrom(current: number): boolean {
+    switch (current) {
+      case STEP.SERVICE:
+        return !!service;
+      case STEP.BARBER:
+        return !!barber;
+      case STEP.TIME:
+        return !!selectedSlot;
+      case STEP.DETAILS:
+        return detailsValid;
+      default:
+        return true;
+    }
+  }
+
+  function handleContinue() {
+    if (step === STEP.DETAILS) {
+      const errors = validateDetails();
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+    if (!canContinueFrom(step)) return;
+    goToStep(Math.min(step + 1, STEP.CONFIRM));
+  }
+
+  function handleBack() {
+    setSubmitError(null);
+    setStep((prev) => Math.max(prev - 1, STEP.SERVICE));
+    topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
+  /** Restart the flow from step 1 (used by "Book another"). */
+  function bookAnother() {
+    setConfirmation(null);
+    setServiceId(null);
+    setBarberId(null);
+    setWindowStartMs(null);
+    setSlotsByDate({});
+    setTakenByDate({});
+    setClosedDates([]);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setSubmitError(null);
+    setFieldErrors({});
+    setStep(STEP.SERVICE);
+    setFurthestStep(STEP.SERVICE);
+    topRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
 
   const days = useMemo(() => {
     if (windowStartMs === null) return [];
@@ -291,268 +378,485 @@ export function BookingFlow({
     );
   }
 
+  // --- Success state ---------------------------------------------------------
+  if (confirmation && service && barber) {
+    return (
+      <BookingSuccess
+        appointmentId={confirmation.appointmentId}
+        managementToken={confirmation.managementToken}
+        barberName={barber.name}
+        serviceName={service.name}
+        durationMinutes={service.durationMinutes}
+        price={service.price}
+        slotIso={confirmation.slotIso}
+        customerName={name}
+        customerEmail={email}
+        customerPhone={phone}
+        labels={{
+          title: t.confirmation.title,
+          body: t.confirmation.body,
+          reference: t.confirmation.reference,
+          when: t.confirmation.when,
+          with: t.confirmation.with,
+          service: t.confirmation.service,
+          duration: t.confirmation.duration,
+          price: t.confirmation.price,
+          name: t.manage.customerName,
+          phone: t.manage.customerPhone,
+          email: t.manage.customerEmail,
+          addToCalendar: t.confirmation.addToCalendar,
+          manage: t.confirmation.manageLink,
+          bookAnother: t.confirmation.bookAnother,
+          backHome: t.common.backHome,
+          copyLink: t.confirmation.copyLink,
+          copied: t.confirmation.copied,
+          manageHint: t.confirmation.manageBody,
+          minutes: t.common.minutes,
+          birr: t.common.birr,
+        }}
+        onBookAnother={bookAnother}
+        homeHref={localeHref(locale, "/")}
+      />
+    );
+  }
+
+  const stepLabels = {
+    service: t.book.steps.service,
+    barber: t.book.steps.barber,
+    time: t.book.steps.time,
+    details: t.book.steps.details,
+    confirm: t.book.steps.confirm,
+  };
+
+  const stepperSteps = [
+    { label: stepLabels.service },
+    { label: stepLabels.barber },
+    { label: stepLabels.time },
+    { label: stepLabels.details },
+    { label: stepLabels.confirm },
+  ];
+
+  const summaryLabels = {
+    title: t.book.summary,
+    barber: t.book.summaryBarber,
+    service: t.book.summaryService,
+    duration: t.book.summaryDuration,
+    when: t.book.summaryWhen,
+    price: t.confirmation.price,
+    name: t.manage.customerName,
+    phone: t.manage.customerPhone,
+    email: t.manage.customerEmail,
+    change: t.book.change,
+    pickTime: t.book.pickTime,
+    minutes: t.common.minutes,
+    birr: t.common.birr,
+  };
+
   return (
-    <div className="grid gap-6 pb-24 lg:grid-cols-[1fr_340px] lg:pb-4">
-      <div className="flex flex-col gap-5">
-        {/* 1 — Service */}
-        <Card className="p-5">
-          {stepLabel(1, t.book.chooseService, !!service, !service)}
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {services.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                aria-pressed={serviceId === s.id}
-                onClick={() => {
-                  setServiceId(s.id);
-                  setSelectedDate(null);
-                  setSelectedSlot(null);
-                }}
-                className={cn(
-                  "rounded-lg border p-4 text-left transition-colors",
-                  serviceId === s.id
-                    ? "border-brass bg-brass/10"
-                    : "border-line bg-surface hover:border-brass/40"
-                )}
-              >
-                <span className="font-medium">{s.name}</span>
-                <span className="mt-1 block text-xs text-cream-muted">
-                  {s.durationMinutes} {t.common.minutes} · {s.price} {t.common.birr}
-                </span>
-              </button>
-            ))}
-          </div>
-        </Card>
+    <div className="grid gap-6 pb-4 lg:grid-cols-[1fr_340px]">
+      <div className="flex min-w-0 flex-col gap-5">
+        {/* Anchor so we can scroll the step indicator into view on navigation. */}
+        <div ref={topRef} className="scroll-mt-20" />
+        <StepIndicator
+          steps={stepperSteps}
+          current={step}
+          furthest={furthestStep}
+          onNavigate={goToStep}
+        />
 
-        {/* 2 — Barber */}
-        <Card className="p-5">
-          {stepLabel(2, t.book.chooseBarber, !!barber, !!service && !barber)}
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            {barbers.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                aria-pressed={barberId === b.id}
-                onClick={() => {
-                  setBarberId(b.id);
-                  setSelectedDate(null);
-                  setSelectedSlot(null);
-                }}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg border p-4 text-left transition-colors",
-                  barberId === b.id
-                    ? "border-brass bg-brass/10"
-                    : "border-line bg-surface hover:border-brass/40"
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-heading text-sm font-semibold",
-                    barberId === b.id
-                      ? "bg-brass text-charcoal"
-                      : "bg-forest/50 text-brass-strong"
-                  )}
-                  aria-hidden="true"
-                >
-                  {b.name
-                    .split(" ")
-                    .map((part) => part[0])
-                    .slice(0, 2)
-                    .join("")}
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{b.name}</span>
-                  <span className="block text-xs text-cream-muted">
-                    {barberId === b.id ? t.book.selected : t.book.available}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </Card>
-
-        {/* 3 — Date & time */}
-        <Card className="p-4 sm:p-5">
-          {stepLabel(
-            3,
-            "Pick a date & time",
-            !!selectedSlot,
-            !!service && !!barber && !selectedSlot
-          )}
-          <div className="mt-4 space-y-4">
-            <DayStripPicker
-              days={days}
-              slotsByDate={slotsByDate}
-              closedDates={closedDates}
-              value={selectedDate}
-              disabled={!service || !barber}
-              todayKey={addisDateKey(Date.now())}
-              onSelect={(dateKey) => {
-                setSelectedDate(dateKey);
-                // Only drop the chosen time if it belongs to a different day —
-                // flipping between days must not silently lose the selection.
-                setSelectedSlot((current) =>
-                  current && addisDateKey(Date.parse(current)) === dateKey
-                    ? current
-                    : null
-                );
-              }}
+        {/* STEP 1 — Service */}
+        {step === STEP.SERVICE && (
+          <Card className="p-5 sm:p-6" aria-label={stepLabels.service}>
+            <StepHeading
+              index={1}
+              title={t.book.chooseService}
+              hint={t.book.serviceHint}
             />
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {services.map((s) => (
+                <ServiceCard
+                  key={s.id}
+                  service={s}
+                  selected={serviceId === s.id}
+                  minutesLabel={t.common.minutes}
+                  priceLabel={t.common.birr}
+                  onSelect={() => {
+                    setServiceId(s.id);
+                    setSelectedDate(null);
+                    setSelectedSlot(null);
+                  }}
+                />
+              ))}
+            </div>
+            <WizardNav
+              showBack={false}
+              backLabel={t.book.back}
+              nextLabel={t.book.next}
+              onNext={handleContinue}
+              nextDisabled={!service}
+            />
+          </Card>
+        )}
 
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <p className="text-xs text-cream-muted">
-                {!service || !barber
-                  ? "Pick a service and barber first"
-                  : selectedDate
-                    ? `Times for ${formatAddisDateLabel(selectedDate)}`
-                    : "Pick a day above, then choose a time"}
-              </p>
-              <div className="flex items-center gap-2">
-                {canGoBackWindow && (
-                  <button
-                    type="button"
-                    className="rounded-md border border-line px-2.5 py-1 text-xs font-medium text-cream-muted transition-colors hover:border-brass/40 hover:text-cream"
-                    onClick={() =>
-                      setWindowStartMs((prev) =>
-                        Math.max(
-                          (prev ?? Date.now()) - WINDOW_DAYS * DAY_MS,
-                          Date.now()
+
+        {/* STEP 2 — Barber */}
+        {step === STEP.BARBER && (
+          <Card className="p-5 sm:p-6" aria-label={stepLabels.barber}>
+            <StepHeading
+              index={2}
+              title={t.book.chooseBarber}
+              hint={t.book.barberHint}
+            />
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {barbers.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  aria-pressed={barberId === b.id}
+                  onClick={() => {
+                    setBarberId(b.id);
+                    setSelectedDate(null);
+                    setSelectedSlot(null);
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border p-4 text-left transition-colors",
+                    barberId === b.id
+                      ? "border-brass bg-brass/10"
+                      : "border-line bg-surface hover:border-brass/40"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-heading text-sm font-semibold",
+                      barberId === b.id
+                        ? "bg-brass text-charcoal"
+                        : "bg-forest/50 text-brass-strong"
+                    )}
+                    aria-hidden="true"
+                  >
+                    {b.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .slice(0, 2)
+                      .join("")}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{b.name}</span>
+                    <span className="block text-xs text-cream-muted">
+                      {barberId === b.id ? t.book.selected : t.book.available}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <WizardNav
+              backLabel={t.book.back}
+              nextLabel={t.book.next}
+              onBack={handleBack}
+              onNext={handleContinue}
+              nextDisabled={!barber}
+            />
+          </Card>
+        )}
+
+
+        {/* STEP 3 — Date & time */}
+        {step === STEP.TIME && (
+          <Card className="p-4 sm:p-6" aria-label={stepLabels.time}>
+            <StepHeading
+              index={3}
+              title={t.book.chooseTime}
+              hint={t.book.timeHint}
+            />
+            <div className="mt-4 space-y-4">
+              <DayStripPicker
+                days={days}
+                slotsByDate={slotsByDate}
+                closedDates={closedDates}
+                value={selectedDate}
+                todayKey={addisDateKey(Date.now())}
+                onSelect={(dateKey) => {
+                  setSelectedDate(dateKey);
+                  // Only drop the chosen time if it belongs to a different day —
+                  // flipping between days must not silently lose the selection.
+                  setSelectedSlot((current) =>
+                    current && addisDateKey(Date.parse(current)) === dateKey
+                      ? current
+                      : null
+                  );
+                }}
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <p className="text-xs text-cream-muted">
+                  {selectedDate
+                    ? `${t.book.timesFor} ${formatAddisDateLabel(selectedDate)}`
+                    : t.book.pickDayFirst}
+                </p>
+                <div className="flex items-center gap-2">
+                  {canGoBackWindow && (
+                    <button
+                      type="button"
+                      className="rounded-md border border-line px-2.5 py-1 text-xs font-medium text-cream-muted transition-colors hover:border-brass/40 hover:text-cream"
+                      onClick={() =>
+                        setWindowStartMs((prev) =>
+                          Math.max(
+                            (prev ?? Date.now()) - WINDOW_DAYS * DAY_MS,
+                            Date.now()
+                          )
                         )
-                      )
-                    }
-                  >
-                    ← Earlier
-                  </button>
-                )}
-                {canAdvanceWindow && (
-                  <button
-                    type="button"
-                    className="rounded-md border border-line px-2.5 py-1 text-xs font-medium text-cream-muted transition-colors hover:border-brass/40 hover:text-cream"
-                    onClick={() =>
-                      setWindowStartMs(
-                        (prev) => (prev ?? Date.now()) + WINDOW_DAYS * DAY_MS
-                      )
-                    }
-                  >
-                    Later dates →
-                  </button>
-                )}
+                      }
+                    >
+                      ← {t.book.earlier}
+                    </button>
+                  )}
+                  {canAdvanceWindow && (
+                    <button
+                      type="button"
+                      className="rounded-md border border-line px-2.5 py-1 text-xs font-medium text-cream-muted transition-colors hover:border-brass/40 hover:text-cream"
+                      onClick={() =>
+                        setWindowStartMs(
+                          (prev) => (prev ?? Date.now()) + WINDOW_DAYS * DAY_MS
+                        )
+                      }
+                    >
+                      {t.book.later} →
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-line pt-4">
+                <TimeSlotGrid
+                  dateKey={selectedDate}
+                  slots={selectedDate ? (slotsByDate[selectedDate] ?? []) : []}
+                  takenSlots={selectedDate ? (takenByDate[selectedDate] ?? []) : []}
+                  value={selectedSlot}
+                  loading={availabilityLoading}
+                  error={availabilityError}
+                  onRetry={refreshAfterRejection}
+                  onSelect={setSelectedSlot}
+                />
               </div>
             </div>
+            <WizardNav
+              backLabel={t.book.back}
+              nextLabel={t.book.next}
+              onBack={handleBack}
+              onNext={handleContinue}
+              nextDisabled={!selectedSlot || availabilityLoading}
+            />
+          </Card>
+        )}
 
-            <div className="border-t border-line pt-4">
-              <TimeSlotGrid
-                dateKey={selectedDate}
-                slots={selectedDate ? (slotsByDate[selectedDate] ?? []) : []}
-                takenSlots={selectedDate ? (takenByDate[selectedDate] ?? []) : []}
-                value={selectedSlot}
-                loading={availabilityLoading}
-                error={availabilityError}
-                onRetry={refreshAfterRejection}
-                onSelect={setSelectedSlot}
+
+        {/* STEP 4 — Your details */}
+        {step === STEP.DETAILS && (
+          <Card className="p-5 sm:p-6" aria-label={stepLabels.details}>
+            <StepHeading
+              index={4}
+              title={t.book.yourDetails}
+              hint={t.book.detailsHint}
+            />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Input
+                name="customer_name"
+                label={t.book.name}
+                placeholder={t.book.namePlaceholder}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() =>
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    name: validateDetails().name,
+                  }))
+                }
+                error={fieldErrors.name}
+                autoComplete="name"
+              />
+              <Input
+                name="customer_phone"
+                label={t.book.phone}
+                placeholder={t.book.phonePlaceholder}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onBlur={() =>
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    phone: validateDetails().phone,
+                  }))
+                }
+                error={fieldErrors.phone}
+                autoComplete="tel"
+                inputMode="tel"
+              />
+              <Input
+                name="customer_email"
+                label={t.book.email}
+                type="email"
+                placeholder={t.book.emailPlaceholder}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onBlur={() =>
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    email: validateDetails().email,
+                  }))
+                }
+                error={fieldErrors.email}
+                autoComplete="email"
+                className="sm:col-span-2"
               />
             </div>
-          </div>
-        </Card>
-
-        {/* 4 — Contact details */}
-        <Card className="p-5">
-          {stepLabel(4, "Your details", false, !!selectedSlot && !confirmation)}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Input
-              name="customer_name"
-              label="Full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="name"
-            />
-            <Input
-              name="customer_phone"
-              label="Phone (Ethiopian)"
-              placeholder="09xxxxxxxx"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoComplete="tel"
-              inputMode="tel"
-            />
-            <Input
-              name="customer_email"
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              className="sm:col-span-2"
-            />
-          </div>
-        </Card>
-      </div>
-
-      {/* Desktop: sticky summary sidebar */}
-      <div className="hidden lg:block">
-        <BookingSummary
-          barberName={barber?.name ?? "—"}
-          serviceName={service?.name ?? "—"}
-          durationMinutes={service?.durationMinutes ?? 0}
-          price={service?.price ?? "—"}
-          slotIso={selectedSlot}
-          submitting={submitting}
-          error={submitError}
-          onSubmit={submit}
-        />
-      </div>
-
-      {/* Mobile: sticky action bar — the confirm button is always in reach */}
-      {!confirmation && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-charcoal/95 px-4 pt-3 pb-[calc(0.75rem_+_env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
-          {submitError && (
-            <p
-              className="mb-2 line-clamp-2 rounded-md border border-error/40 bg-error/10 px-3 py-1.5 text-xs text-error"
-              role="alert"
-            >
-              {submitError}
+            <p className="mt-3 text-xs leading-5 text-cream-muted">
+              {t.book.detailsPrivacy}
             </p>
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">
-                {service ? service.name : "Select a service"}
-              </p>
-              <p className="truncate text-xs text-cream-muted">
-                {selectedSlot
-                  ? `${formatAddisDateLabel(addisDateKey(Date.parse(selectedSlot)))} · ${formatAddisTime(Date.parse(selectedSlot))} · ${service?.price ?? ""} Br`
-                  : service
-                    ? `${service.durationMinutes} min · ${service.price} Br`
-                    : "Pick a time"}
-              </p>
-            </div>
-            <Button
-              className="shrink-0"
-              onClick={submit}
-              loading={submitting}
-              disabled={!selectedSlot}
-            >
-              {selectedSlot ? "Confirm" : "Pick a time"}
-            </Button>
-          </div>
-        </div>
-      )}
+            <WizardNav
+              backLabel={t.book.back}
+              nextLabel={t.book.next}
+              onBack={handleBack}
+              onNext={handleContinue}
+              nextDisabled={!detailsValid}
+            />
+          </Card>
+        )}
 
-      {confirmation && service && barber && (
-        <BookingConfirmationModal
-          open
-          onClose={() => setConfirmation(null)}
-          appointmentId={confirmation.appointmentId}
-          managementToken={confirmation.managementToken}
-          barberName={barber.name}
-          serviceName={service.name}
-          slotIso={confirmation.slotIso}
-          customerName={name}
-          customerEmail={email}
-          customerPhone={phone}
-        />
-      )}
+        {/* STEP 5 — Confirm */}
+        {step === STEP.CONFIRM && (
+          <Card className="p-5 sm:p-6" aria-label={stepLabels.confirm}>
+            <StepHeading
+              index={5}
+              title={t.book.confirmTitle}
+              hint={t.book.confirmHint}
+            />
+            <div className="mt-4">
+              <BookingSummary
+                embedded
+                barberName={barber?.name ?? "—"}
+                serviceName={service?.name ?? "—"}
+                durationMinutes={service?.durationMinutes ?? 0}
+                price={service?.price ?? "—"}
+                slotIso={selectedSlot}
+                customerName={name}
+                customerPhone={phone}
+                customerEmail={email}
+                onEditService={() => goToStep(STEP.SERVICE)}
+                onEditBarber={() => goToStep(STEP.BARBER)}
+                onEditTime={() => goToStep(STEP.TIME)}
+                onEditDetails={() => goToStep(STEP.DETAILS)}
+                labels={summaryLabels}
+              />
+            </div>
+            <p className="mt-4 text-xs leading-5 text-cream-muted">
+              {t.book.confirmPolicy}
+            </p>
+            <WizardNav
+              backLabel={t.book.back}
+              nextLabel={t.book.confirm}
+              onBack={handleBack}
+              onNext={submit}
+              nextLoading={submitting}
+              nextDisabled={!service || !barber || !selectedSlot}
+              error={submitError}
+            />
+          </Card>
+        )}
+      </div>
+
+      {/* Desktop: sticky live summary sidebar */}
+      <div className="hidden lg:block">
+        <Card tone="raised" className="sticky top-20 p-6">
+          <BookingSummary
+            barberName={barber?.name ?? "—"}
+            serviceName={service?.name ?? "—"}
+            durationMinutes={service?.durationMinutes ?? 0}
+            price={service?.price ?? "—"}
+            slotIso={selectedSlot}
+            labels={summaryLabels}
+          />
+        </Card>
+      </div>
     </div>
+  );
+}
+
+/** Numbered heading used at the top of each step card. */
+function StepHeading({
+  index,
+  title,
+  hint,
+}: {
+  index: number;
+  title: string;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-widest text-brass">
+        <span className="sr-only">Step </span>
+        {index}
+      </p>
+      <h2 className="mt-1 font-heading text-xl font-semibold">{title}</h2>
+      {hint && <p className="mt-1 text-sm leading-6 text-cream-muted">{hint}</p>}
+    </div>
+  );
+}
+
+/** Selectable service card: name, description, duration and price. */
+function ServiceCard({
+  service,
+  selected,
+  minutesLabel,
+  priceLabel,
+  onSelect,
+}: {
+  service: FlowService;
+  selected: boolean;
+  minutesLabel: string;
+  priceLabel: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "flex h-full flex-col rounded-lg border p-4 text-left transition-colors",
+        selected
+          ? "border-brass bg-brass/10"
+          : "border-line bg-surface hover:border-brass/40"
+      )}
+    >
+      <span className="flex items-start justify-between gap-3">
+        <span className="font-medium">{service.name}</span>
+        <span
+          className={cn(
+            "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px]",
+            selected
+              ? "border-brass bg-brass text-charcoal"
+              : "border-line text-transparent"
+          )}
+          aria-hidden="true"
+        >
+          ✓
+        </span>
+      </span>
+      {service.description && (
+        <span className="mt-1 block text-xs leading-5 text-cream-muted">
+          {service.description}
+        </span>
+      )}
+      <span className="mt-2 flex items-center gap-2 text-xs text-cream-muted">
+        <span>
+          {service.durationMinutes} {minutesLabel}
+        </span>
+        <span aria-hidden="true">·</span>
+        <span className="font-semibold text-brass-strong">
+          {service.price} {priceLabel}
+        </span>
+      </span>
+    </button>
   );
 }
 
