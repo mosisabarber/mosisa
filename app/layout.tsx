@@ -37,19 +37,44 @@ const serifDisplay = Playfair_Display({
   display: "swap",
 });
 
-/** Amharic faces (local TTFs in public/fonts — verified Ethiopic glyph
-    coverage: Loga Comic 299, Ebrima 358). Headings → Loga Comic,
-    body/UI → Ebrima, swapped in via `html[lang="am"]` in globals.css. */
+/**
+ * Amharic faces (headings → Loga Comic, body/UI → Ebrima) — applied via
+ * `html[lang="am"]` in globals.css.
+ *
+ * PERF: `next/font/local` serves files AS-IS, so we self-host **WOFF2
+ * subsets** instead of the original monolithic TTFs (Ebrima alone was
+ * ~856 KB). Each face is split into a latin + an ethiopic subset with the
+ * matching `unicode-range` in `declarations`, so:
+ *   - Amharic pages download only the ethiopic subset (~144 KB for Ebrima,
+ *     ~12 KB for Loga), not the full font;
+ *   - English pages download none of it (the loader already only emits
+ *     preload links for faces actually used by the rendered text).
+ *
+ * `preload: false` keeps these off the critical path — they only matter for
+ * `html[lang="am"]`, and `display: "swap"` avoids invisible text. Fallback
+ * to Google's Noto Ethiopic (in globals.css) covers any codepoint outside
+ * these subsets.
+ */
 const logaComic = localFont({
-  src: "../public/fonts/Loga_Comic_Regular.ttf",
+  src: [
+    { path: "../public/fonts/loga-comic-latin.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/loga-comic-ethiopic.woff2", weight: "400", style: "normal" },
+  ],
   variable: "--font-loga-comic",
   display: "swap",
+  preload: false,
+  fallback: ["Noto Serif Ethiopic", "Georgia", "serif"],
 });
 
 const ebrima = localFont({
-  src: "../public/fonts/ebrima.ttf",
+  src: [
+    { path: "../public/fonts/ebrima-latin.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/ebrima-ethiopic.woff2", weight: "400", style: "normal" },
+  ],
   variable: "--font-ebrima",
   display: "swap",
+  preload: false,
+  fallback: ["Noto Sans Ethiopic", "system-ui", "sans-serif"],
 });
 
 const siteUrl = getSiteUrl();

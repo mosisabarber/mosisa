@@ -46,9 +46,10 @@ const MAX_HORIZON_DAYS = 60; // §4.6
 const STEP = {
   SERVICE: 0,
   BARBER: 1,
-  TIME: 2,
-  DETAILS: 3,
-  CONFIRM: 4,
+  DATE: 2,
+  TIME: 3,
+  DETAILS: 4,
+  CONFIRM: 5,
 } as const;
 
 function dateKeyFromMs(ms: number): string {
@@ -158,6 +159,8 @@ export function BookingFlow({
         return !!service;
       case STEP.BARBER:
         return !!barber;
+      case STEP.DATE:
+        return !!selectedDate;
       case STEP.TIME:
         return !!selectedSlot;
       case STEP.DETAILS:
@@ -423,6 +426,7 @@ export function BookingFlow({
   const stepLabels = {
     service: t.book.steps.service,
     barber: t.book.steps.barber,
+    date: t.book.steps.date,
     time: t.book.steps.time,
     details: t.book.steps.details,
     confirm: t.book.steps.confirm,
@@ -431,6 +435,7 @@ export function BookingFlow({
   const stepperSteps = [
     { label: stepLabels.service },
     { label: stepLabels.barber },
+    { label: stepLabels.date },
     { label: stepLabels.time },
     { label: stepLabels.details },
     { label: stepLabels.confirm },
@@ -560,13 +565,13 @@ export function BookingFlow({
         )}
 
 
-        {/* STEP 3 — Date & time */}
-        {step === STEP.TIME && (
-          <Card className="p-4 sm:p-6" aria-label={stepLabels.time}>
+        {/* STEP 3 — Date */}
+        {step === STEP.DATE && (
+          <Card className="p-4 sm:p-6" aria-label={stepLabels.date}>
             <StepHeading
               index={3}
-              title={t.book.chooseTime}
-              hint={t.book.timeHint}
+              title={t.book.chooseDate}
+              hint={t.book.dateHint}
             />
             <div className="mt-4 space-y-4">
               <DayStripPicker
@@ -625,7 +630,31 @@ export function BookingFlow({
                   )}
                 </div>
               </div>
+            </div>
+            <WizardNav
+              backLabel={t.book.back}
+              nextLabel={t.book.next}
+              onBack={handleBack}
+              onNext={handleContinue}
+              nextDisabled={!selectedDate}
+            />
+          </Card>
+        )}
 
+        {/* STEP 4 — Time */}
+        {step === STEP.TIME && (
+          <Card className="p-4 sm:p-6" aria-label={stepLabels.time}>
+            <StepHeading
+              index={4}
+              title={t.book.chooseTime}
+              hint={t.book.timeHint}
+            />
+            <div className="mt-4 space-y-3">
+              <p className="text-sm text-cream-muted">
+                {selectedDate
+                  ? `${t.book.timesFor} ${formatAddisDateLabel(selectedDate)}`
+                  : t.book.pickDayFirst}
+              </p>
               <div className="border-t border-line pt-4">
                 <TimeSlotGrid
                   dateKey={selectedDate}
@@ -650,11 +679,11 @@ export function BookingFlow({
         )}
 
 
-        {/* STEP 4 — Your details */}
+        {/* STEP 5 — Your details */}
         {step === STEP.DETAILS && (
           <Card className="p-5 sm:p-6" aria-label={stepLabels.details}>
             <StepHeading
-              index={4}
+              index={5}
               title={t.book.yourDetails}
               hint={t.book.detailsHint}
             />
@@ -721,11 +750,11 @@ export function BookingFlow({
           </Card>
         )}
 
-        {/* STEP 5 — Confirm */}
+        {/* STEP 6 — Confirm */}
         {step === STEP.CONFIRM && (
           <Card className="p-5 sm:p-6" aria-label={stepLabels.confirm}>
             <StepHeading
-              index={5}
+              index={6}
               title={t.book.confirmTitle}
               hint={t.book.confirmHint}
             />
@@ -742,7 +771,7 @@ export function BookingFlow({
                 customerEmail={email}
                 onEditService={() => goToStep(STEP.SERVICE)}
                 onEditBarber={() => goToStep(STEP.BARBER)}
-                onEditTime={() => goToStep(STEP.TIME)}
+                onEditTime={() => goToStep(STEP.DATE)}
                 onEditDetails={() => goToStep(STEP.DETAILS)}
                 labels={summaryLabels}
               />
