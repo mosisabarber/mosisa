@@ -56,6 +56,23 @@ const am: Dictionary = {
     short: ["እሁድ", "ሰኞ", "ማክሰ", "ረቡዕ", "ሐሙስ", "ዓርብ", "ቅዳሜ"],
   },
 
+  months: {
+    short: [
+      "ጃንዩ",
+      "ፌብሩ",
+      "ማርች",
+      "ኤፕሪ",
+      "ሜይ",
+      "ጁን",
+      "ጁላይ",
+      "ኦገስ",
+      "ሴፕቴ",
+      "ኦክቶ",
+      "ኖቬም",
+      "ዲሴም",
+    ],
+  },
+
   home: {
     heroEyebrow: "ሐረር · ኢትዮጵያ",
     heroTitle: "ዘመናዊ ቁርጥ። በሰከንዶች ያስይዙ።",
@@ -220,6 +237,25 @@ const am: Dictionary = {
     back: "ተመለስ",
     next: "ቀጥል",
     change: "ቀይር",
+    today: "ዛሬ",
+    closed: "ተዘግቷል",
+    fullyBooked: "ሙሉ በሙሉ ተይዟል",
+    chooseDateAria: "ቀን ይምረጡ",
+    slotBooked: "ተይዟል",
+    slotBuffer: "የማዘጋጃ ጊዜ",
+    legendTaken: "የተሰረዘ = ቀድሞ ተይዟል",
+    legendBookedBuffer:
+      "ተይዟል = ቀጠሮ አለበት · የማዘጋጃ ጊዜ = የባለሙያው የማጠናቀቂያ ጊዜ",
+    pickDateTitle: "ቀን ይምረጡ",
+    pickDateBody: "ነፃ ሰዓቶችን ለማየት ከላይ ቀን ይምረጡ።",
+    loadTimesFailed: "ሰዓቶችን መጫን አልተቻለም",
+    noSlotsBody: "በዚህ ቀን ምንም ነፃ ሰዓት አልቀረም — ሌላ ቀን ይሞክሩ።",
+    slotSelected: "የተመረጠ",
+    slotAvailable: "ይገኛል",
+    stepAria: "የቀጠሮ ደረጃዎች",
+    stepPrefix: "ደረጃ",
+    cancellationNote:
+      "ከቀጠሮዎ ከ12 ሰዓት በፊት በነፃ መሰረዝ ይችላሉ።",
     errors: {
       nameRequired: "እባክዎ ሙሉ ስምዎን ያስገቡ።",
       nameTooLong: "ይህ ስም በጣም ረጅም ነው (ቢያንስ 80 ፊደላት)።",

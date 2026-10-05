@@ -21,6 +21,10 @@ export interface StepIndicatorProps {
   furthest: number;
   /** Jump to a previously-visited step. */
   onNavigate?: (index: number) => void;
+  /** Localized words for screen readers: `ariaLabel` names the nav, and
+   *  `stepPrefix` prefixes the step number ("Step 3"). English by default. */
+  stepPrefix?: string;
+  ariaLabel?: string;
 }
 
 /**
@@ -36,9 +40,11 @@ export function StepIndicator({
   current,
   furthest,
   onNavigate,
+  stepPrefix = "Step",
+  ariaLabel = "Booking progress",
 }: StepIndicatorProps) {
   return (
-    <nav aria-label="Booking progress">
+    <nav aria-label={ariaLabel}>
       <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-2">
         {steps.map((step, index) => {
           const done = index < current;
@@ -99,7 +105,7 @@ export function StepIndicator({
                 >
                   {marker}
                   <span className="sr-only">
-                    Step {index + 1}:{" "}
+                    {stepPrefix} {index + 1}:{" "}
                   </span>
                   {label}
                 </button>
@@ -109,7 +115,7 @@ export function StepIndicator({
                   aria-current={active ? "step" : undefined}
                 >
                   {marker}
-                  <span className="sr-only">Step {index + 1}: </span>
+                  <span className="sr-only">{stepPrefix} {index + 1}: </span>
                   {label}
                 </span>
               )}

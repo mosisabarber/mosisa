@@ -1,4 +1,9 @@
-import { formatAddisTime, addisDateKey, formatAddisDateLabel } from "@/lib/booking/time";
+import {
+  formatAddisTime,
+  addisDateKey,
+  formatAddisDateLabel,
+  type DateLabelNames,
+} from "@/lib/booking/time";
 
 export interface BookingSummaryProps {
   barberName: string;
@@ -17,6 +22,10 @@ export interface BookingSummaryProps {
   onEditBarber?: () => void;
   onEditTime?: () => void;
   onEditDetails?: () => void;
+  /** Note shown under the sidebar variant; localized by the booking flow. */
+  cancellationNote?: string;
+  /** Localized weekday/month names so the date label follows the locale. */
+  dateNames?: DateLabelNames;
   labels?: {
     title: string;
     barber: string;
@@ -68,6 +77,8 @@ export function BookingSummary({
   onEditBarber,
   onEditTime,
   onEditDetails,
+  cancellationNote,
+  dateNames,
   labels,
 }: BookingSummaryProps) {
   const l = { ...DEFAULT_LABELS, ...labels };
@@ -94,7 +105,7 @@ export function BookingSummary({
         <SummaryRow label={l.when} onEdit={onEditTime} editLabel={l.change}>
           {slotIso ? (
             <span className="text-right">
-              {formatAddisDateLabel(addisDateKey(Date.parse(slotIso)))}
+              {formatAddisDateLabel(addisDateKey(Date.parse(slotIso)), dateNames)}
               <br />
               {formatAddisTime(Date.parse(slotIso))} (Harar)
             </span>
@@ -131,9 +142,9 @@ export function BookingSummary({
         </span>
       </div>
 
-      {!embedded && (
+      {!embedded && cancellationNote && (
         <p className="mt-3 text-center text-xs leading-5 text-cream-muted">
-          Free cancellation up to 12 hours before your appointment.
+          {cancellationNote}
         </p>
       )}
     </div>

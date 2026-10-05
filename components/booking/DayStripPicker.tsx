@@ -1,23 +1,49 @@
 "use client";
 
-import { addisDayOfWeek } from "@/lib/booking/time";
+import { addisDateParts, addisDayOfWeek } from "@/lib/booking/time";
 import { cn } from "@/lib/cn";
 
-const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+export interface DayStripLabels {
+  /** Short weekday names, index 0 = Sunday. */
+  weekdaysShort: readonly string[];
+  /** Short month names, index 0 = January — used only for Gregorian dates. */
+  monthsShort: readonly string[];
+  /**
+   * Show the day number and month in the Ethiopian (Ge'ez) calendar, with the
+   * month names coming from `ETHIOPIAN_MONTHS`. Set for Amharic.
+   */
+  ethiopian?: boolean;
+  /** Label shown on today's cell instead of the weekday name. */
+  today: string;
+  /** Day-state labels, used in the accessible name of each cell. */
+  closed: string;
+  fullyBooked: string;
+  /** Accessible name of the whole picker. */
+  ariaLabel: string;
+}
+
+/** English defaults so callers without a dictionary still render sensibly. */
+const DEFAULT_LABELS: DayStripLabels = {
+  weekdaysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  monthsShort: [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ],
+  today: "Today",
+  closed: "closed",
+  fullyBooked: "fully booked",
+  ariaLabel: "Choose a date",
+};
 
 export interface DayStripPickerProps {
   days: string[]; // 'YYYY-MM-DD' Addis calendar dates (within the 60-day cap)
@@ -29,6 +55,8 @@ export interface DayStripPickerProps {
   disabled?: boolean;
   /** Today's Addis date key — used to label the first day "Today". */
   todayKey?: string;
+  /** Localized labels — the booking flow passes the active dictionary's set. */
+  labels?: Partial<DayStripLabels>;
 }
 
 /**
@@ -46,7 +74,9 @@ export function DayStripPicker({
   onSelect,
   disabled = false,
   todayKey,
+  labels,
 }: DayStripPickerProps) {
+  const l = { ...DEFAULT_LABELS, ...labels };
   const closed = new Set(closedDates);
   return (
     <div
@@ -55,7 +85,7 @@ export function DayStripPicker({
         disabled && "pointer-events-none opacity-50"
       )}
       role="listbox"
-      aria-label="Choose a date"
+      aria-label={l.ariaLabel}
     >
       {days.map((dateKey) => {
         const slots = slotsByDate[dateKey];
@@ -68,14 +98,13 @@ export function DayStripPicker({
         const isClosed = closed.has(dateKey);
         const soldOut = !isLoadingDay && !isClosed && count === 0;
         const unavailable = isClosed || soldOut;
-        const dow = WEEKDAY[addisDayOfWeek(dateKey)];
-        const dayNum = Number(dateKey.slice(8, 10));
-        const month = MONTH[Number(dateKey.slice(5, 7)) - 1];
+        const dow = l.weekdaysShort[addisDayOfWeek(dateKey)] ?? "";
+        const { day: dayNum, month } = addisDateParts(dateKey, l);
         const isToday = dateKey === todayKey;
         const stateLabel = isClosed
-          ? "closed"
+          ? l.closed
           : soldOut
-            ? "fully booked"
+            ? l.fullyBooked
             : undefined;
 
         return (
@@ -98,7 +127,7 @@ export function DayStripPicker({
             )}
           >
             <span className="text-[11px] uppercase tracking-wide">
-              {isToday ? "Today" : dow}
+              {isToday ? l.today : dow}
             </span>
             <span className="mt-0.5 font-heading text-lg font-semibold leading-none">
               {dayNum}

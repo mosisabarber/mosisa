@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card } from "@/components/ui";
-import { formatAddisTime, addisDateKey, formatAddisDateLabel } from "@/lib/booking/time";
+import {
+  formatAddisTime,
+  addisDateKey,
+  formatAddisDateLabel,
+  type DateLabelNames,
+} from "@/lib/booking/time";
 import { buildIcs, icsDataUrl } from "@/lib/notifications/calendar";
 
 export interface BookingSuccessProps {
@@ -39,6 +44,8 @@ export interface BookingSuccessProps {
     minutes: string;
     birr: string;
   };
+  /** Localized weekday/month names so the date label follows the locale. */
+  dateNames?: DateLabelNames;
   /** Start the flow again from step 1. */
   onBookAnother: () => void;
   /** Locale-aware href to the home page. */
@@ -63,6 +70,7 @@ export function BookingSuccess({
   customerName,
   customerEmail,
   labels: l,
+  dateNames,
   onBookAnother,
   homeHref,
 }: BookingSuccessProps) {
@@ -125,7 +133,7 @@ export function BookingSuccess({
           <Row label={l.with} value={barberName} />
           <Row
             label={l.when}
-            value={`${formatAddisDateLabel(addisDateKey(Date.parse(slotIso)))} · ${formatAddisTime(
+            value={`${formatAddisDateLabel(addisDateKey(Date.parse(slotIso)), dateNames)} · ${formatAddisTime(
               Date.parse(slotIso)
             )} (Harar)`}
           />

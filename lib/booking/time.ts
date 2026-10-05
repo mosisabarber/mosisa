@@ -44,6 +44,21 @@ export function formatAddisTime(utcMs: number): string {
   return shifted(utcMs).toISOString().slice(11, 16);
 }
 
+/**
+ * Names used by `formatAddisDateLabel` when the caller supplies no localized
+ * set (English defaults). Keep the array lengths: 7 weekdays, 12 months.
+ */
+export interface DateLabelNames {
+  weekdaysShort: readonly string[];
+  monthsShort: readonly string[];
+  /**
+   * Render the date in the Ethiopian (Ge'ez) calendar instead of the
+   * Gregorian one — set for Amharic. Month names then come from
+   * `ETHIOPIAN_MONTHS` and the year is the Ethiopian year.
+   */
+  ethiopian?: boolean;
+}
+
 const WEEKDAY_LONG = [
   "Sunday",
   "Monday",
@@ -68,16 +83,123 @@ const MONTH_SHORT = [
   "Dec",
 ];
 
+/* --- Ethiopian (Ge'ez) calendar -------------------------------------------
+ * Ethiopia keeps its own calendar: 13 months of 30 days plus ጳጉሜን (5 days,
+ * 6 in a leap year), and years that run about 7.5 behind the Gregorian count.
+ * Conversion goes through the Julian Day Number, which is exact — no
+ * New-Year guessing and no dependence on the host clock.
+ */
+
+/** Ethiopian month names, index 0 = መስከረም … index 12 = ጳጉሜን. */
+export const ETHIOPIAN_MONTHS = [
+  "መስከረም",
+  "ጥቅምት",
+  "ኅዳር",
+  "ታኅሣሥ",
+  "ጥር",
+  "የካቲት",
+  "መጋቢት",
+  "ሚያዝያ",
+  "ግንቦት",
+  "ሰኔ",
+  "ሐምሌ",
+  "ነሐሴ",
+  "ጳጉሜን",
+] as const;
+
+/** Julian Day Number of 1 መስከረም 1 E.C. (the Amete Mihret epoch). */
+const ETHIOPIAN_EPOCH_JDN = 1723856;
+
+/** Julian Day Number of a proleptic-Gregorian calendar date. */
+function gregorianToJdn(year: number, month: number, day: number): number {
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  return (
+    day +
+    Math.floor((153 * m + 2) / 5) +
+    365 * y +
+    Math.floor(y / 4) -
+    Math.floor(y / 100) +
+    Math.floor(y / 400) -
+    32045
+  );
+}
+
+export interface EthiopianDate {
+  year: number;
+  /** 1..13 (13 = ጳጉሜን). */
+  month: number;
+  /** 1..30, or 1..5/6 for ጳጉሜን. */
+  day: number;
+}
+
+/** Convert a 'YYYY-MM-DD' Addis date key to the Ethiopian calendar. */
+export function toEthiopianDate(dateKey: string): EthiopianDate {
+  const jdn = gregorianToJdn(
+    Number(dateKey.slice(0, 4)),
+    Number(dateKey.slice(5, 7)),
+    Number(dateKey.slice(8, 10))
+  );
+  const total = jdn - ETHIOPIAN_EPOCH_JDN;
+  const cycle = Math.floor(total / 1461); // 4 Ethiopian years = 1461 days
+  const remainder = total - 1461 * cycle;
+  // The 4th year of each cycle is 366 days long; `remainder` 0..1460 maps onto
+  // either that leap year or one of the three ordinary years (365 days each).
+  const dayOfYear = (remainder % 365) + 365 * Math.floor(remainder / 1460);
+  return {
+    year:
+      4 * cycle +
+      Math.floor(remainder / 365) -
+      Math.floor(remainder / 1460),
+    month: Math.floor(dayOfYear / 30) + 1,
+    day: (dayOfYear % 30) + 1,
+  };
+}
+
+/**
+ * Day number, month name and year for an Addis date key — in the Ethiopian
+ * calendar when `names.ethiopian` is set, otherwise Gregorian.
+ */
+export function addisDateParts(
+  dateKey: string,
+  names?: DateLabelNames
+): { day: string; month: string; year: string } {
+  if (names?.ethiopian) {
+    const { year, month, day } = toEthiopianDate(dateKey);
+    return {
+      day: String(day),
+      month: ETHIOPIAN_MONTHS[month - 1] ?? "",
+      year: String(year),
+    };
+  }
+  const monthIndex = Number(dateKey.slice(5, 7)) - 1;
+  return {
+    day: String(Number(dateKey.slice(8, 10))),
+    month: names
+      ? (names.monthsShort[monthIndex] ?? "")
+      : (MONTH_SHORT[monthIndex] ?? ""),
+    year: dateKey.slice(0, 4),
+  };
+}
+
 /**
  * Human label for an Addis calendar date key, e.g. 'Tue, 22 Sep 2026'.
  * Used by the booking flow's date/time step (better than a raw 'YYYY-MM-DD').
+ * Pass `names` to render the label in the active locale (e.g. Amharic), which
+ * renders 'እሁድ, 24 መስከረም 2019' for 2026-10-04 because Amharic uses the
+ * Ethiopian calendar.
  */
-export function formatAddisDateLabel(dateKey: string): string {
-  const dow = WEEKDAY_LONG[addisDayOfWeek(dateKey)] ?? "";
-  const day = Number(dateKey.slice(8, 10));
-  const month = MONTH_SHORT[Number(dateKey.slice(5, 7)) - 1] ?? "";
-  const year = dateKey.slice(0, 4);
-  return `${dow.slice(0, 3)}, ${day} ${month} ${year}`;
+export function formatAddisDateLabel(
+  dateKey: string,
+  names?: DateLabelNames
+): string {
+  const dowIndex = addisDayOfWeek(dateKey);
+  const dow = names
+    ? (names.weekdaysShort[dowIndex] ?? "")
+    : (WEEKDAY_LONG[dowIndex] ?? "").slice(0, 3);
+  const { day, month, year } = addisDateParts(dateKey, names);
+  return `${dow}, ${day} ${month} ${year}`;
 }
 
 /** Build an ISO datetime string (with +03:00 offset) from date + 'HH:mm'. */

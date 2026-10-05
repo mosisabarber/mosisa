@@ -22,13 +22,44 @@ export interface TimeSlotGridProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  /** Localized labels — the booking flow passes the active dictionary's set. */
+  labels?: Partial<TimeSlotLabels>;
 }
 
-const TAKEN_LABEL: Record<TakenReason, string> = {
+export interface TimeSlotLabels {
+  /** Label for a slot with an appointment on it (struck through). */
+  booked: string;
+  /** Label for the barber's turnaround/buffer gap (no appointment here). */
+  buffer: string;
+  legendTaken: string;
+  legendBookedBuffer: string;
+  emptyTitle: string;
+  emptyBody: string;
+  errorTitle: string;
+  retry: string;
+  soldOutTitle: string;
+  soldOutBody: string;
+  selectedAria: string;
+  availableAria: string;
+}
+
+/** English defaults so callers without a dictionary still render sensibly. */
+const DEFAULT_LABELS: TimeSlotLabels = {
   booked: "Booked",
-  // `blocked` is the barber's turnaround/buffer gap or a blocked time — there
+  // `buffer` is the barber's turnaround/buffer gap or a blocked time — there
   // is no appointment here, so "Unavailable" would be vague and "Booked" wrong.
-  blocked: "Buffer",
+  buffer: "Buffer",
+  legendTaken: "Struck through = already taken",
+  legendBookedBuffer:
+    "Booked = an appointment · Buffer = barber's turnaround",
+  emptyTitle: "Pick a date",
+  emptyBody: "Select a day above to see available times.",
+  errorTitle: "Could not load times",
+  retry: "Try again",
+  soldOutTitle: "Fully booked",
+  soldOutBody: "No open times on this day — try another date.",
+  selectedAria: "selected",
+  availableAria: "available",
 };
 
 /** 'HH:mm' from an ISO slot, for merging with the taken list. */
@@ -45,13 +76,15 @@ export function TimeSlotGrid({
   loading = false,
   error = null,
   onRetry,
+  labels,
 }: TimeSlotGridProps) {
+  const l = { ...DEFAULT_LABELS, ...labels };
   if (!dateKey) {
     return (
       <StateMessage
         state="empty"
-        title="Pick a date"
-        description="Select a day above to see available times."
+        title={l.emptyTitle}
+        description={l.emptyBody}
         className="py-8"
       />
     );
@@ -65,13 +98,13 @@ export function TimeSlotGrid({
     return (
       <StateMessage
         state="error"
-        title="Could not load times"
+        title={l.errorTitle}
         description={error}
         className="py-8"
         action={
           onRetry && (
             <Button size="sm" variant="secondary" onClick={onRetry}>
-              Try again
+              {l.retry}
             </Button>
           )
         }
@@ -85,8 +118,8 @@ export function TimeSlotGrid({
     return (
       <StateMessage
         state="empty"
-        title="Fully booked"
-        description="No open times on this day — try another date."
+        title={l.soldOutTitle}
+        description={l.soldOutBody}
         className="py-8"
       />
     );
@@ -106,7 +139,7 @@ export function TimeSlotGrid({
         const reason = takenByTime.get(time);
 
         if (slotIso === undefined) {
-          const label = TAKEN_LABEL[reason ?? "blocked"];
+          const label = reason === "booked" ? l.booked : l.buffer;
           return (
             <button
               key={time}
@@ -138,7 +171,7 @@ export function TimeSlotGrid({
             key={time}
             type="button"
             aria-pressed={isSelected}
-            aria-label={`${time} ${isSelected ? "selected" : "available"}`}
+            aria-label={`${time} ${isSelected ? l.selectedAria : l.availableAria}`}
             onClick={() => onSelect(slotIso)}
             className={cn(
               "flex min-h-11 flex-col items-center justify-center rounded-md border px-1 py-2 text-sm font-medium tabular-nums transition-colors",
@@ -168,11 +201,9 @@ export function TimeSlotGrid({
               className="inline-block h-3 w-5 rounded-sm border border-line/60 bg-surface/40"
               aria-hidden="true"
             />
-            Struck through = already taken
+            {l.legendTaken}
           </span>
-          <span className="whitespace-nowrap">
-            Booked = an appointment · Buffer = barber&rsquo;s turnaround
-          </span>
+          <span className="whitespace-nowrap">{l.legendBookedBuffer}</span>
         </p>
       )}
     </div>

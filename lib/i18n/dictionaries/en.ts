@@ -60,6 +60,23 @@ const en = {
     short: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
   },
 
+  months: {
+    short: [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ],
+  },
+
   home: {
     heroEyebrow: "Harar · Ethiopia",
     heroTitle: "Look sharp. Book in seconds.",
@@ -224,6 +241,25 @@ const en = {
     back: "Back",
     next: "Next",
     change: "Change",
+    today: "Today",
+    closed: "Closed",
+    fullyBooked: "Fully booked",
+    chooseDateAria: "Choose a date",
+    slotBooked: "Booked",
+    slotBuffer: "Buffer",
+    legendTaken: "Struck through = already taken",
+    legendBookedBuffer:
+      "Booked = an appointment · Buffer = barber's turnaround",
+    pickDateTitle: "Pick a date",
+    pickDateBody: "Select a day above to see available times.",
+    loadTimesFailed: "Could not load times",
+    noSlotsBody: "No open times on this day — try another date.",
+    slotSelected: "selected",
+    slotAvailable: "available",
+    stepAria: "Booking progress",
+    stepPrefix: "Step",
+    cancellationNote:
+      "Free cancellation up to 12 hours before your appointment.",
     errors: {
       nameRequired: "Please enter your full name.",
       nameTooLong: "That name is too long (max 80 characters).",

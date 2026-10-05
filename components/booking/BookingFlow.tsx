@@ -10,7 +10,11 @@ import { BookingSuccess } from "@/components/booking/BookingSuccess";
 import { StepIndicator } from "@/components/booking/StepIndicator";
 import { WizardNav } from "@/components/booking/WizardNav";
 import { bookingInputSchema, ethiopianPhone } from "@/lib/booking/validation";
-import { addisDateKey, formatAddisDateLabel } from "@/lib/booking/time";
+import {
+  addisDateKey,
+  formatAddisDateLabel,
+  type DateLabelNames,
+} from "@/lib/booking/time";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import type { Locale } from "@/lib/i18n/config";
 import { localeHref } from "@/lib/i18n/links";
@@ -105,6 +109,21 @@ export function BookingFlow({
 
   const service = services.find((s) => s.id === serviceId) ?? null;
   const barber = barbers.find((b) => b.id === barberId) ?? null;
+
+  /**
+   * Amharic readers expect the Ethiopian calendar, so dates switch to
+   * መስከረም…ጳጉሜን with the Ethiopian year (about 7.5 years behind Gregorian).
+   * English keeps Gregorian. Slot *times* stay 24-hour either way — they are
+   * real schedule times and must not be shifted.
+   */
+  const useEthiopianCalendar = locale === "am";
+
+  /** Localized weekday/month names for date labels (from the dictionary). */
+  const dateNames: DateLabelNames = {
+    weekdaysShort: t.days.short,
+    monthsShort: t.months.short,
+    ethiopian: useEthiopianCalendar,
+  };
 
   // --- Field validation (mirrors bookingInputSchema on the client) -----------
   const [fieldErrors, setFieldErrors] = useState<{
@@ -342,6 +361,7 @@ export function BookingFlow({
         appointment_id?: string;
         management_token?: string;
         message?: string;
+        limit?: string;
       };
 
       if (res.status === 201 && body.appointment_id && body.management_token) {
@@ -353,13 +373,20 @@ export function BookingFlow({
         return;
       }
 
+      // Prefer the localized dictionary message for known statuses — server
+      // messages are English-only and must not override the customer's
+      // language. Keep the server text only as an unmapped fallback.
       if (res.status === 409) {
-        setSubmitError(body.message ?? t.book.errors.slotTaken);
+        setSubmitError(t.book.errors.slotTaken ?? body.message);
         refreshAfterRejection();
       } else if (res.status === 429) {
-        setSubmitError(body.message ?? t.book.errors.rateLimitedIp);
+        setSubmitError(
+          body.limit === "phone"
+            ? (t.book.errors.rateLimitedPhone ?? body.message)
+            : (t.book.errors.rateLimitedIp ?? body.message)
+        );
       } else {
-        setSubmitError(body.message ?? t.book.errors.generic);
+        setSubmitError(t.book.errors.generic);
       }
     } catch {
       setSubmitError(t.book.errors.generic);
@@ -417,6 +444,7 @@ export function BookingFlow({
           minutes: t.common.minutes,
           birr: t.common.birr,
         }}
+        dateNames={dateNames}
         onBookAnother={bookAnother}
         homeHref={localeHref(locale, "/")}
       />
@@ -467,6 +495,8 @@ export function BookingFlow({
           current={step}
           furthest={furthestStep}
           onNavigate={goToStep}
+          stepPrefix={t.book.stepPrefix}
+          ariaLabel={t.book.stepAria}
         />
 
         {/* STEP 1 — Service */}
@@ -476,6 +506,7 @@ export function BookingFlow({
               index={1}
               title={t.book.chooseService}
               hint={t.book.serviceHint}
+              prefix={t.book.stepPrefix}
             />
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {services.map((s) => (
@@ -511,6 +542,7 @@ export function BookingFlow({
               index={2}
               title={t.book.chooseBarber}
               hint={t.book.barberHint}
+              prefix={t.book.stepPrefix}
             />
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {barbers.map((b) => (
@@ -572,6 +604,7 @@ export function BookingFlow({
               index={3}
               title={t.book.chooseDate}
               hint={t.book.dateHint}
+              prefix={t.book.stepPrefix}
             />
             <div className="mt-4 space-y-4">
               <DayStripPicker
@@ -580,6 +613,15 @@ export function BookingFlow({
                 closedDates={closedDates}
                 value={selectedDate}
                 todayKey={addisDateKey(Date.now())}
+                labels={{
+                  weekdaysShort: t.days.short,
+                  monthsShort: t.months.short,
+                  ethiopian: useEthiopianCalendar,
+                  today: t.book.today,
+                  closed: t.book.closed,
+                  fullyBooked: t.book.fullyBooked,
+                  ariaLabel: t.book.chooseDateAria,
+                }}
                 onSelect={(dateKey) => {
                   setSelectedDate(dateKey);
                   // Only drop the chosen time if it belongs to a different day —
@@ -595,7 +637,7 @@ export function BookingFlow({
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <p className="text-xs text-cream-muted">
                   {selectedDate
-                    ? `${t.book.timesFor} ${formatAddisDateLabel(selectedDate)}`
+                    ? `${t.book.timesFor} ${formatAddisDateLabel(selectedDate, dateNames)}`
                     : t.book.pickDayFirst}
                 </p>
                 <div className="flex items-center gap-2">
@@ -648,11 +690,12 @@ export function BookingFlow({
               index={4}
               title={t.book.chooseTime}
               hint={t.book.timeHint}
+              prefix={t.book.stepPrefix}
             />
             <div className="mt-4 space-y-3">
               <p className="text-sm text-cream-muted">
                 {selectedDate
-                  ? `${t.book.timesFor} ${formatAddisDateLabel(selectedDate)}`
+                  ? `${t.book.timesFor} ${formatAddisDateLabel(selectedDate, dateNames)}`
                   : t.book.pickDayFirst}
               </p>
               <div className="border-t border-line pt-4">
@@ -665,6 +708,20 @@ export function BookingFlow({
                   error={availabilityError}
                   onRetry={refreshAfterRejection}
                   onSelect={setSelectedSlot}
+                  labels={{
+                    booked: t.book.slotBooked,
+                    buffer: t.book.slotBuffer,
+                    legendTaken: t.book.legendTaken,
+                    legendBookedBuffer: t.book.legendBookedBuffer,
+                    emptyTitle: t.book.pickDateTitle,
+                    emptyBody: t.book.pickDateBody,
+                    errorTitle: t.book.loadTimesFailed,
+                    retry: t.common.tryAgain,
+                    soldOutTitle: t.book.fullyBooked,
+                    soldOutBody: t.book.noSlotsBody,
+                    selectedAria: t.book.slotSelected,
+                    availableAria: t.book.slotAvailable,
+                  }}
                 />
               </div>
             </div>
@@ -686,6 +743,7 @@ export function BookingFlow({
               index={5}
               title={t.book.yourDetails}
               hint={t.book.detailsHint}
+              prefix={t.book.stepPrefix}
             />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <Input
@@ -757,6 +815,7 @@ export function BookingFlow({
               index={6}
               title={t.book.confirmTitle}
               hint={t.book.confirmHint}
+              prefix={t.book.stepPrefix}
             />
             <div className="mt-4">
               <BookingSummary
@@ -773,6 +832,8 @@ export function BookingFlow({
                 onEditBarber={() => goToStep(STEP.BARBER)}
                 onEditTime={() => goToStep(STEP.DATE)}
                 onEditDetails={() => goToStep(STEP.DETAILS)}
+                cancellationNote={t.book.cancellationNote}
+                dateNames={dateNames}
                 labels={summaryLabels}
               />
             </div>
@@ -801,6 +862,8 @@ export function BookingFlow({
             durationMinutes={service?.durationMinutes ?? 0}
             price={service?.price ?? "—"}
             slotIso={selectedSlot}
+            cancellationNote={t.book.cancellationNote}
+            dateNames={dateNames}
             labels={summaryLabels}
           />
         </Card>
@@ -814,16 +877,21 @@ function StepHeading({
   index,
   title,
   hint,
+  prefix = "Step",
 }: {
   index: number;
   title: string;
   hint?: string;
+  /** Localized word for the screen-reader-only "Step N" prefix. */
+  prefix?: string;
 }) {
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-brass">
-        <span className="sr-only">Step </span>
-        {index}
+        <span className="sr-only">
+          {prefix} {index}
+        </span>
+        <span aria-hidden="true">{index}</span>
       </p>
       <h2 className="mt-1 font-heading text-xl font-semibold">{title}</h2>
       {hint && <p className="mt-1 text-sm leading-6 text-cream-muted">{hint}</p>}
