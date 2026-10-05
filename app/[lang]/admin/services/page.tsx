@@ -10,7 +10,8 @@ import { getAllServices } from "@/lib/admin-data";
 import { Badge, Card, StateMessage } from "@/components/ui";
 import { ServiceForm } from "@/components/admin/ServiceForm";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
-import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
+import { NameCell } from "@/components/admin/NameCell";
+import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function AdminServicesPage({
 }) {
   const { lang } = await params;
   const t = await getAdminDictionary(lang);
+  const locale = getLocale(lang);
   await requireAdmin(lang);
   const services = await getAllServices();
 
@@ -60,7 +62,9 @@ export default async function AdminServicesPage({
               <tbody>
                 {services.map((s) => (
                   <tr key={s.id} className="border-t border-line">
-                    <td className="px-4 py-2.5">{s.name}</td>
+                    <td className="px-4 py-2.5">
+                      <NameCell locale={locale} en={s.name} am={s.nameAm} />
+                    </td>
                     <td className="px-4 py-2.5">
                       {s.durationMinutes} {t.common.min}
                     </td>
@@ -82,7 +86,9 @@ export default async function AdminServicesPage({
             {services.map((s) => (
               <li key={s.id} className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium text-cream">{s.name}</span>
+                  <span className="font-medium text-cream">
+                    <NameCell locale={locale} en={s.name} am={s.nameAm} />
+                  </span>
                   <Badge tone={s.isActive ? "forest" : "neutral"}>
                     {s.isActive ? t.common.active : t.common.inactive}
                   </Badge>

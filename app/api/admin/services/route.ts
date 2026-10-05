@@ -42,6 +42,12 @@ export async function POST(request: Request) {
   const body = raw as Record<string, unknown>;
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
+  // Amharic content is optional — store NULL/[] when blank so the public site
+  // falls back to the English value.
+  const nameAm = typeof body.nameAm === "string" ? body.nameAm.trim() : "";
+  const description = typeof body.description === "string" ? body.description.trim() : "";
+  const descriptionAm =
+    typeof body.descriptionAm === "string" ? body.descriptionAm.trim() : "";
   const durationMinutes = Number(body.durationMinutes);
   const price = body.price;
   const isActive = body.isActive !== false;
@@ -58,7 +64,9 @@ export async function POST(request: Request) {
       .insert(services)
       .values({
         name,
-        description: typeof body.description === "string" ? body.description || null : null,
+        nameAm: nameAm || null,
+        description: description || null,
+        descriptionAm: descriptionAm || null,
         durationMinutes,
         price: typeof price === "string" ? price : String(price ?? 0),
         isActive,
@@ -102,12 +110,17 @@ export async function PATCH(request: Request) {
   const patch: Record<string, unknown> = {};
 
   if (typeof body.name === "string") patch.name = body.name.trim();
+  if (typeof body.nameAm === "string" || body.nameAm === null)
+    patch.nameAm = typeof body.nameAm === "string" ? body.nameAm.trim() || null : null;
   if (typeof body.durationMinutes === "number") patch.durationMinutes = body.durationMinutes;
   if (typeof body.price === "string" || typeof body.price === "number")
     patch.price = body.price;
   if (typeof body.isActive === "boolean") patch.isActive = body.isActive;
   if (typeof body.description === "string")
-    patch.description = body.description;
+    patch.description = body.description.trim() || null;
+  if (typeof body.descriptionAm === "string" || body.descriptionAm === null)
+    patch.descriptionAm =
+      typeof body.descriptionAm === "string" ? body.descriptionAm.trim() || null : null;
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "no_changes" }, { status: 400 });

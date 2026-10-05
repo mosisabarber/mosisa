@@ -3,6 +3,7 @@ import { NavMenu } from "@/components/NavMenu";
 import { getActiveBarbers, getWorkingHours } from "@/lib/data";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
+import { pickLocalized } from "@/lib/i18n/content";
 
 const DAY_NAMES = [
   "Sunday",
@@ -77,7 +78,7 @@ export default async function PublicLayout({
                       href={href(`/barbers/${barber.slug}`)}
                       className="text-sm text-cream-muted transition-colors hover:text-brass-strong"
                     >
-                      {barber.name}
+                      {pickLocalized(locale, barber.name, barber.nameAm) ?? barber.name}
                     </Link>
                   </li>
                 ))

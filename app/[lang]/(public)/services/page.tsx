@@ -4,6 +4,7 @@ import { Button, Card, StateMessage } from "@/components/ui";
 import { getActiveServices } from "@/lib/data";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
+import { pickLocalized } from "@/lib/i18n/content";
 import { formatTemplate } from "@/lib/i18n/format";
 
 export async function generateMetadata({
@@ -64,10 +65,12 @@ export default async function ServicesPage({
               className="flex flex-wrap items-center justify-between gap-4 p-5"
             >
               <div className="min-w-0">
-                <p className="font-medium">{service.name}</p>
-                {service.description && (
+                <p className="font-medium">
+                  {pickLocalized(locale, service.name, service.nameAm)}
+                </p>
+                {pickLocalized(locale, service.description, service.descriptionAm) && (
                   <p className="mt-1 text-sm leading-6 text-cream-muted">
-                    {service.description}
+                    {pickLocalized(locale, service.description, service.descriptionAm)}
                   </p>
                 )}
                 <p className="mt-1.5 text-xs uppercase tracking-widest text-cream-muted">

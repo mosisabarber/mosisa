@@ -22,10 +22,14 @@ import {
 export const barbers = pgTable("barbers", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** Amharic display name. Null/blank → public site falls back to `name`. */
+  nameAm: text("name_am"),
   slug: text("slug").notNull().unique(),
   bio: text("bio"),
+  bioAm: text("bio_am"),
   photoUrl: text("photo_url"),
   specialties: text("specialties").array(),
+  specialtiesAm: text("specialties_am").array(),
   bufferMinutes: integer("buffer_minutes").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
 });
@@ -33,7 +37,10 @@ export const barbers = pgTable("barbers", {
 export const services = pgTable("services", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  /** Amharic display name. Null/blank → public site falls back to `name`. */
+  nameAm: text("name_am"),
   description: text("description"),
+  descriptionAm: text("description_am"),
   durationMinutes: integer("duration_minutes").notNull(),
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   isActive: boolean("is_active").notNull().default(true),

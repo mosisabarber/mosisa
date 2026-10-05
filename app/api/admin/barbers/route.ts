@@ -54,11 +54,17 @@ export async function POST(request: Request) {
       .insert(barbers)
       .values({
         name,
+        // Amharic content is optional — NULL/[] falls back to English on the site.
+        nameAm: typeof body.nameAm === "string" ? body.nameAm.trim() || null : null,
         slug,
         bio: typeof body.bio === "string" ? body.bio || null : null,
+        bioAm: typeof body.bioAm === "string" ? body.bioAm.trim() || null : null,
         photoUrl: typeof body.photoUrl === "string" ? body.photoUrl || null : null,
         bufferMinutes: typeof body.bufferMinutes === "number" ? body.bufferMinutes : 0,
         specialties: Array.isArray(body.specialties) ? (body.specialties as string[]) : [],
+        specialtiesAm: Array.isArray(body.specialtiesAm)
+          ? (body.specialtiesAm as string[])
+          : [],
         isActive: body.isActive !== false,
       })
       .returning();
@@ -99,6 +105,8 @@ export async function PATCH(request: Request) {
   const body = raw as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
   if (typeof body.name === "string") patch.name = body.name.trim();
+  if (typeof body.nameAm === "string" || body.nameAm === null)
+    patch.nameAm = typeof body.nameAm === "string" ? body.nameAm.trim() || null : null;
   if (typeof body.slug === "string") {
     patch.slug = body.slug
       .trim()
@@ -107,9 +115,13 @@ export async function PATCH(request: Request) {
       .replace(/^-+|-+$/g, "");
   }
   if (typeof body.bio === "string") patch.bio = body.bio;
+  if (typeof body.bioAm === "string" || body.bioAm === null)
+    patch.bioAm = typeof body.bioAm === "string" ? body.bioAm.trim() || null : null;
   if (typeof body.photoUrl === "string") patch.photoUrl = body.photoUrl;
   if (typeof body.bufferMinutes === "number") patch.bufferMinutes = body.bufferMinutes;
   if (Array.isArray(body.specialties)) patch.specialties = body.specialties as string[];
+  if (Array.isArray(body.specialtiesAm))
+    patch.specialtiesAm = body.specialtiesAm as string[];
   if (typeof body.isActive === "boolean") patch.isActive = body.isActive;
 
   if (Object.keys(patch).length === 0) {

@@ -8,6 +8,7 @@ import { classifyChange } from "@/lib/booking/lateness";
 import { addisDateKey, formatAddisTime } from "@/lib/booking/time";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
+import { pickLocalized } from "@/lib/i18n/content";
 
 export async function generateMetadata({
   params,
@@ -73,12 +74,19 @@ export default async function ManagePage({ params }: Props) {
             },
             barber: {
               id: appointment.barber.id,
-              name: appointment.barber.name,
+              name:
+                pickLocalized(locale, appointment.barber.name, appointment.barber.nameAm) ??
+                appointment.barber.name,
               slug: appointment.barber.slug,
             },
             service: {
               id: appointment.service.id,
-              name: appointment.service.name,
+              name:
+                pickLocalized(
+                  locale,
+                  appointment.service.name,
+                  appointment.service.nameAm
+                ) ?? appointment.service.name,
               durationMinutes: appointment.service.durationMinutes,
               price: appointment.service.price,
             },

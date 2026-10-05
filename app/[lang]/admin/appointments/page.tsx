@@ -5,7 +5,9 @@ import { Suspense } from "react";
 import { getAppointments } from "@/lib/admin-data";
 import type { AppointmentList } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
-import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
+import { NameCell } from "@/components/admin/NameCell";
+import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
+import type { Locale } from "@/lib/i18n/config";
 import { Badge, Card, StateMessage } from "@/components/ui";
 
 const STATUS_TONE: Record<string, "brass" | "forest" | "navy" | "warning" | "error" | "neutral"> =
@@ -46,6 +48,7 @@ export default async function AdminAppointmentsPage({
 }) {
   const { lang } = await params;
   const t = await getAdminDictionary(lang);
+  const locale = getLocale(lang);
   await requireAdmin(lang);
   const sp = await searchParams;
   const status = sp.status as "confirmed" | "cancelled" | "completed" | "no_show" | undefined;
@@ -101,7 +104,7 @@ export default async function AdminAppointmentsPage({
       </form>
 
       <Suspense fallback={<StateMessage state="loading" />}>
-        <AppointmentsTable appointments={appointments} t={t} />
+        <AppointmentsTable appointments={appointments} t={t} locale={locale} />
       </Suspense>
     </section>
   );
@@ -110,9 +113,11 @@ export default async function AdminAppointmentsPage({
 async function AppointmentsTable({
   appointments,
   t,
+  locale,
 }: {
   appointments: AppointmentList[];
   t: Awaited<ReturnType<typeof getAdminDictionary>>;
+  locale: Locale;
 }) {
   if (appointments.length === 0) {
     return <StateMessage state="empty" title={t.appointments.empty} />;
@@ -166,8 +171,12 @@ async function AppointmentsTable({
                     {a.customerPhone}
                   </span>
                 </td>
-                <td className="px-4 py-2.5">{a.serviceName}</td>
-                <td className="px-4 py-2.5">{a.barberName ?? "—"}</td>
+                <td className="px-4 py-2.5">
+                  <NameCell locale={locale} en={a.serviceName} am={a.serviceNameAm} />
+                </td>
+                <td className="px-4 py-2.5">
+                  <NameCell locale={locale} en={a.barberName ?? "—"} am={a.barberNameAm} />
+                </td>
                 <td className="px-4 py-2.5">
                   <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
                     {statusLabel(a.status)}
@@ -208,10 +217,14 @@ async function AppointmentsTable({
               </dd>
 
               <dt className="text-cream-muted">{t.appointments.service}</dt>
-              <dd className="text-right text-cream">{a.serviceName ?? "—"}</dd>
+              <dd className="text-right text-cream">
+                <NameCell locale={locale} en={a.serviceName ?? "—"} am={a.serviceNameAm} />
+              </dd>
 
               <dt className="text-cream-muted">{t.appointments.barber}</dt>
-              <dd className="text-right text-cream">{a.barberName ?? "—"}</dd>
+              <dd className="text-right text-cream">
+                <NameCell locale={locale} en={a.barberName ?? "—"} am={a.barberNameAm} />
+              </dd>
             </dl>
           </li>
         ))}

@@ -9,6 +9,7 @@ import {
 import { BUSINESS, getSiteUrl } from "@/lib/seo";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
+import { pickLocalized } from "@/lib/i18n/content";
 import { formatTemplate } from "@/lib/i18n/format";
 
 export const revalidate = 60;
@@ -132,7 +133,9 @@ export default async function HomePage({ params }: Props) {
                 className="flex items-center justify-between p-5"
               >
                 <div>
-                  <p className="font-medium">{service.name}</p>
+                  <p className="font-medium">
+                    {pickLocalized(locale, service.name, service.nameAm)}
+                  </p>
                   <p className="mt-1 text-sm text-cream-muted">
                     {service.durationMinutes} {t.common.minutes}
                   </p>
@@ -173,6 +176,7 @@ export default async function HomePage({ params }: Props) {
                   barber={barber}
                   ctaLabel={t.barbers.viewProfile}
                   href={href(`/barbers/${barber.slug}`)}
+                  locale={locale}
                 />
               ))
             )}

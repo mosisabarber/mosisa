@@ -9,7 +9,8 @@
 import Link from "next/link";
 import { getTodaysAppointments, type AppointmentList } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
-import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
+import { NameCell } from "@/components/admin/NameCell";
+import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { Badge, Button, Card, StateMessage } from "@/components/ui";
 import { AddToCalendar } from "@/components/admin/AddToCalendar";
 
@@ -37,6 +38,7 @@ export default async function AdminDashboardPage({
 }) {
   const { lang } = await params;
   const t = await getAdminDictionary(lang);
+  const locale = getLocale(lang);
   // Gate: redirect to the locale-prefixed login page if not authenticated.
   const session = await requireAdmin(lang);
   const appointments = await getTodaysAppointments();
@@ -111,9 +113,11 @@ export default async function AdminDashboardPage({
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
-                      <div>{a.serviceName}</div>
+                      <div>
+                        <NameCell locale={locale} en={a.serviceName} am={a.serviceNameAm} />
+                      </div>
                       <div className="text-xs text-cream-muted">
-                        {a.barberName}
+                        <NameCell locale={locale} en={a.barberName} am={a.barberNameAm} />
                       </div>
                     </td>
                     <td className="px-4 py-2.5">
@@ -154,12 +158,12 @@ export default async function AdminDashboardPage({
 
                   <dt className="text-cream-muted">{t.dashboard.service}</dt>
                   <dd className="text-right text-cream">
-                    {a.serviceName ?? "—"}
+                    <NameCell locale={locale} en={a.serviceName ?? "—"} am={a.serviceNameAm} />
                   </dd>
 
                   <dt className="text-cream-muted">{t.dashboard.barber}</dt>
                   <dd className="text-right text-cream">
-                    {a.barberName ?? "—"}
+                    <NameCell locale={locale} en={a.barberName ?? "—"} am={a.barberNameAm} />
                   </dd>
                 </dl>
 

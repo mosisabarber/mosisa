@@ -107,7 +107,9 @@ export interface AppointmentList {
   endDatetime: Date;
   status: string;
   barberName: string | null;
+  barberNameAm: string | null;
   serviceName: string | null;
+  serviceNameAm: string | null;
 }
 
 /**
@@ -153,7 +155,9 @@ export async function getAppointments(opts: {
           endDatetime: appointments.endDatetime,
           status: appointments.status,
           barberName: barbers.name,
+          barberNameAm: barbers.nameAm,
           serviceName: services.name,
+          serviceNameAm: services.nameAm,
         })
         .from(appointments)
         .leftJoin(barbers, eq(appointments.barberId, barbers.id))

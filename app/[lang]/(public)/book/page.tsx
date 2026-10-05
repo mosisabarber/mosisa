@@ -3,6 +3,7 @@ import { BookingFlow } from "@/components/booking/BookingFlow";
 import { getActiveBarbers, getActiveServices } from "@/lib/data";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
+import { pickLocalized } from "@/lib/i18n/content";
 
 export async function generateMetadata({
   params,
@@ -52,14 +53,14 @@ export default async function BookPage({ params, searchParams }: Props) {
         <BookingFlow
           services={services.map((s) => ({
             id: s.id,
-            name: s.name,
-            description: s.description,
+            name: pickLocalized(locale, s.name, s.nameAm) ?? s.name,
+            description: pickLocalized(locale, s.description, s.descriptionAm),
             durationMinutes: s.durationMinutes,
             price: s.price,
           }))}
           barbers={barbers.map((b) => ({
             id: b.id,
-            name: b.name,
+            name: pickLocalized(locale, b.name, b.nameAm) ?? b.name,
             slug: b.slug,
           }))}
           initialBarberSlug={barber ?? null}

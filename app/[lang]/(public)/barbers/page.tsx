@@ -58,6 +58,7 @@ export default async function BarbersPage({
               barber={barber}
               ctaLabel={t.barbers.viewProfile}
               href={localeHref(locale, `/barbers/${barber.slug}`)}
+              locale={locale}
             />
           ))}
         </div>

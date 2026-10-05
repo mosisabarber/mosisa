@@ -23,12 +23,14 @@ export interface ManagedAppointment {
   barber: {
     id: string;
     name: string;
+    nameAm: string | null;
     slug: string;
     bufferMinutes: number;
   };
   service: {
     id: string;
     name: string;
+    nameAm: string | null;
     durationMinutes: number;
     price: string;
   };
@@ -53,10 +55,12 @@ export async function getAppointmentByToken(
       createdAt: appointments.createdAt,
       barberId: barbers.id,
       barberName: barbers.name,
+      barberNameAm: barbers.nameAm,
       barberSlug: barbers.slug,
       barberBufferMinutes: barbers.bufferMinutes,
       serviceId: services.id,
       serviceName: services.name,
+      serviceNameAm: services.nameAm,
       serviceDurationMinutes: services.durationMinutes,
       servicePrice: services.price,
     })
@@ -82,12 +86,14 @@ export async function getAppointmentByToken(
     barber: {
       id: row.barberId,
       name: row.barberName,
+      nameAm: row.barberNameAm,
       slug: row.barberSlug,
       bufferMinutes: row.barberBufferMinutes,
     },
     service: {
       id: row.serviceId,
       name: row.serviceName,
+      nameAm: row.serviceNameAm,
       durationMinutes: row.serviceDurationMinutes,
       price: row.servicePrice,
     },

@@ -32,12 +32,18 @@ export function BarberForm({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState(barber?.name ?? "");
+  const [nameAm, setNameAm] = useState(barber?.nameAm ?? "");
   const [slug, setSlug] = useState(barber?.slug ?? "");
   const [bio, setBio] = useState(barber?.bio ?? "");
+  const [bioAm, setBioAm] = useState(barber?.bioAm ?? "");
   const [photoUrl, setPhotoUrl] = useState(barber?.photoUrl ?? "");
   const [buffer, setBuffer] = useState(barber?.bufferMinutes?.toString() ?? "0");
   const [specialties, setSpecialties] = useState(barber?.specialties?.join(", ") ?? "");
+  const [specialtiesAm, setSpecialtiesAm] = useState(barber?.specialtiesAm?.join(", ") ?? "");
   const [isActive, setIsActive] = useState(barber?.isActive ?? true);
+
+  const toList = (value: string) =>
+    value ? value.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -80,13 +86,14 @@ export function BarberForm({
     try {
       const payload = {
         name,
+        nameAm: nameAm || null,
         slug,
         bio: bio || null,
+        bioAm: bioAm || null,
         photoUrl: photoUrl || null,
         bufferMinutes: Number(buffer),
-        specialties: specialties
-          ? specialties.split(",").map((s) => s.trim()).filter(Boolean)
-          : [],
+        specialties: toList(specialties),
+        specialtiesAm: toList(specialtiesAm),
         isActive,
       };
       const res = await fetch(
@@ -130,6 +137,17 @@ export function BarberForm({
           <Input label={t.name} value={name} onChange={(e) => setName(e.target.value)} required />
           <Input label={t.slug} value={slug} onChange={(e) => setSlug(e.target.value)} required />
           <Input label={t.bio} value={bio} onChange={(e) => setBio(e.target.value)} />
+
+          <p className="text-xs font-semibold uppercase tracking-widest text-cream-muted">
+            {common.amharic}
+          </p>
+          <Input label={t.nameAm} value={nameAm} onChange={(e) => setNameAm(e.target.value)} />
+          <Input label={t.bioAm} value={bioAm} onChange={(e) => setBioAm(e.target.value)} />
+          <Input
+            label={t.specialtiesAm}
+            value={specialtiesAm}
+            onChange={(e) => setSpecialtiesAm(e.target.value)}
+          />
 
           {/* Photo Upload & Preview */}
           <div className="flex flex-col gap-2">

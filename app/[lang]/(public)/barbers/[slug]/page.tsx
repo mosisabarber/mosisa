@@ -5,29 +5,32 @@ import { notFound } from "next/navigation";
 import { Badge, Button, Card } from "@/components/ui";
 import { getActiveBarbers, getBarberBySlug } from "@/lib/data";
 import { getSiteUrl } from "@/lib/seo";
+import { getLocale } from "@/lib/i18n/get-dictionary";
+import { pickLocalized, pickLocalizedList } from "@/lib/i18n/content";
 
 interface Props {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ lang: string; slug: string }>;
 }
 
 export const revalidate = 60;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { lang, slug } = await params;
+  const locale = getLocale(lang);
   const decodedSlug = decodeURIComponent(slug);
   const barber = await getBarberBySlug(decodedSlug);
   if (!barber) return { title: "Barber not found" };
+  const name = pickLocalized(locale, barber.name, barber.nameAm) ?? barber.name;
+  const bio = pickLocalized(locale, barber.bio, barber.bioAm);
   return {
-    title: `${barber.name} — Barber`,
+    title: `${name} — Barber`,
     description:
-      barber.bio?.slice(0, 150) ??
-      `Book an appointment with ${barber.name} at Mosisa Barber Shop.`,
+      bio?.slice(0, 150) ??
+      `Book an appointment with ${name} at Mosisa Barber Shop.`,
     alternates: { canonical: `/barbers/${barber.slug}` },
     openGraph: {
-      title: `${barber.name} — Mosisa Barber Shop`,
-      description:
-        barber.bio?.slice(0, 200) ??
-        `Book an appointment with ${barber.name}.`,
+      title: `${name} — Mosisa Barber Shop`,
+      description: bio?.slice(0, 200) ?? `Book an appointment with ${name}.`,
       type: "profile",
       url: `/barbers/${barber.slug}`,
       images: barber.photoUrl ? [{ url: barber.photoUrl }] : undefined,
@@ -36,10 +39,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BarberPage({ params }: Props) {
-  const { slug } = await params;
+  const { lang, slug } = await params;
+  const locale = getLocale(lang);
   const decodedSlug = decodeURIComponent(slug);
   const barber = await getBarberBySlug(decodedSlug);
   if (!barber) notFound();
+
+  const name = pickLocalized(locale, barber.name, barber.nameAm) ?? barber.name;
+  const bio = pickLocalized(locale, barber.bio, barber.bioAm);
+  const specialties = pickLocalizedList(
+    locale,
+    barber.specialties,
+    barber.specialtiesAm
+  );
 
   const others = (await getActiveBarbers()).filter((b) => b.id !== barber.id);
   const siteUrl = getSiteUrl();
@@ -61,16 +73,16 @@ export default async function BarberPage({ params }: Props) {
           {
             "@type": "ListItem",
             position: 3,
-            name: barber.name,
+            name,
             item: `${siteUrl}/barbers/${barber.slug}`,
           },
         ],
       },
       {
         "@type": "Person",
-        name: barber.name,
+        name,
         url: `${siteUrl}/barbers/${barber.slug}`,
-        description: barber.bio ?? undefined,
+        description: bio ?? undefined,
         image: barber.photoUrl ?? undefined,
         jobTitle: "Barber",
         worksFor: {
@@ -99,7 +111,7 @@ export default async function BarberPage({ params }: Props) {
             {barber.photoUrl ? (
               <Image
                 src={barber.photoUrl}
-                alt={`Portrait of ${barber.name}, barber at Mosisa Barber Shop`}
+                alt={`Portrait of ${name}, barber at Mosisa Barber Shop`}
                 fill
                 sizes="(min-width: 768px) 320px, 100vw"
                 quality={90}
@@ -108,7 +120,7 @@ export default async function BarberPage({ params }: Props) {
               />
             ) : (
               <span className="font-heading text-7xl font-semibold text-brass/80">
-                {barber.name
+                {name
                   .split(" ")
                   .map((part) => part[0])
                   .slice(0, 2)
@@ -118,18 +130,18 @@ export default async function BarberPage({ params }: Props) {
           </div>
 
           <Link href={`/book?barber=${barber.slug}`} className="mt-4 block">
-            <Button fullWidth>Book with {barber.name.split(" ")[0]}</Button>
+            <Button fullWidth>Book with {name.split(" ")[0]}</Button>
           </Link>
         </div>
 
         <div>
           <h1 className="font-heading text-3xl font-bold sm:text-4xl">
-            {barber.name}
+            {name}
           </h1>
 
-          {barber.specialties && barber.specialties.length > 0 && (
+          {specialties.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {barber.specialties.map((specialty) => (
+              {specialties.map((specialty) => (
                 <Badge key={specialty} tone="forest">
                   {specialty}
                 </Badge>
@@ -138,9 +150,9 @@ export default async function BarberPage({ params }: Props) {
           )}
 
           <div className="mt-5 border-t border-line pt-5">
-            {barber.bio ? (
+            {bio ? (
               <p className="whitespace-pre-line leading-7 text-cream-muted">
-                {barber.bio}
+                {bio}
               </p>
             ) : (
               <p className="text-sm italic text-cream-muted">
@@ -158,7 +170,7 @@ export default async function BarberPage({ params }: Props) {
                 {others.map((other) => (
                   <Link key={other.id} href={`/barbers/${other.slug}`}>
                     <Button variant="ghost" size="sm">
-                      {other.name}
+                      {pickLocalized(locale, other.name, other.nameAm) ?? other.name}
                     </Button>
                   </Link>
                 ))}

@@ -5,7 +5,8 @@
 import { Suspense } from "react";
 import { getBlockedTimes, getActiveBarbers } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
-import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
+import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
+import { pickLocalized } from "@/lib/i18n/content";
 import { Badge, Card, StateMessage } from "@/components/ui";
 
 function formatDt(d: Date): string {
@@ -32,6 +33,7 @@ export default async function AdminBlockedTimesPage({
 }) {
   const { lang } = await params;
   const t = await getAdminDictionary(lang);
+  const locale = getLocale(lang);
   await requireAdmin(lang);
   const [blocks, barbers] = await Promise.all([getBlockedTimes(), getActiveBarbers()]);
 
@@ -64,7 +66,7 @@ export default async function AdminBlockedTimesPage({
           <option value="">{t.blocked.entireShop}</option>
           {barbers.map((b) => (
             <option key={b.id} value={b.id}>
-              {b.name}
+              {pickLocalized(locale, b.name, b.nameAm) ?? b.name}
             </option>
           ))}
         </select>

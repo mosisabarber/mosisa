@@ -3,7 +3,8 @@
  */
 import { getActiveBarbers } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
-import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
+import { NameCell } from "@/components/admin/NameCell";
+import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { Badge, Card, StateMessage } from "@/components/ui";
 import { BarberForm } from "@/components/admin/BarberForm";
 
@@ -16,6 +17,7 @@ export default async function AdminBarbersPage({
 }) {
   const { lang } = await params;
   const t = await getAdminDictionary(lang);
+  const locale = getLocale(lang);
   await requireAdmin(lang);
   const barbers = await getActiveBarbers();
 
@@ -52,7 +54,9 @@ export default async function AdminBarbersPage({
               <tbody>
                 {barbers.map((b) => (
                   <tr key={b.id} className="border-t border-line">
-                    <td className="px-4 py-2.5">{b.name}</td>
+                    <td className="px-4 py-2.5">
+                      <NameCell locale={locale} en={b.name} am={b.nameAm} />
+                    </td>
                     <td className="px-4 py-2.5">
                       {b.bufferMinutes} {t.common.min}
                     </td>
@@ -73,7 +77,9 @@ export default async function AdminBarbersPage({
             {barbers.map((b) => (
               <li key={b.id} className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium text-cream">{b.name}</span>
+                  <span className="font-medium text-cream">
+                    <NameCell locale={locale} en={b.name} am={b.nameAm} />
+                  </span>
                   <Badge tone={b.isActive ? "forest" : "neutral"}>
                     {b.isActive ? t.common.active : t.common.inactive}
                   </Badge>

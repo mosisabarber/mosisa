@@ -143,10 +143,15 @@ Empty states, loading states, error states (including "this slot was just taken"
 
 ```
 barbers
-  id, name, slug, bio, photo_url, specialties[], buffer_minutes, is_active
+  id, name, name_am, slug, bio, bio_am, photo_url, specialties[], specialties_am[],
+  buffer_minutes, is_active
 
 services
-  id, name, description, duration_minutes, price, is_active
+  id, name, name_am, description, description_am, duration_minutes, price, is_active
+
+  -- *_am columns hold the Amharic display text for the bilingual public site.
+  -- They are nullable: when NULL/blank the site falls back to the English
+  -- value, so staff can translate content gradually and nothing breaks.
 
 working_hours          -- shop-wide default hours
   id, day_of_week, start_time, end_time

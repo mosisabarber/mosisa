@@ -23,60 +23,15 @@ async function submit(action: "create" | "edit", payload: Record<string, unknown
   return res;
 }
 
-function ServiceFields({
-  initial,
-  onChange,
-}: {
-  initial?: Partial<Service>;
-  onChange: (values: { name: string; durationMinutes: string; price: string; isActive: boolean }) => void;
-}) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [duration, setDuration] = useState(initial?.durationMinutes?.toString() ?? "");
-  const [price, setPrice] = useState(initial?.price ? Number(initial.price).toString() : "");
-  const [isActive, setIsActive] = useState(initial?.isActive ?? true);
-
-  const notify = (values: { name: string; durationMinutes: string; price: string; isActive: boolean }) =>
-    onChange(values);
-
-  return {
-    name, duration, price, isActive,
-    fields: (
-      <>
-        <Input
-          label="Name"
-          value={name}
-          onChange={(e) => { setName(e.target.value); notify({ name: e.target.value, durationMinutes: duration, price, isActive }); }}
-          required
-        />
-        <Input
-          label="Duration (minutes)"
-          type="number"
-          min={1}
-          value={duration}
-          onChange={(e) => { setDuration(e.target.value); notify({ name, durationMinutes: e.target.value, price, isActive }); }}
-          required
-        />
-        <Input
-          label="Price (ETB)"
-          type="number"
-          min={0}
-          step="0.01"
-          value={price}
-          onChange={(e) => { setPrice(e.target.value); notify({ name, durationMinutes: duration, price: e.target.value, isActive }); }}
-          required
-        />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => { setIsActive(e.target.checked); notify({ name, durationMinutes: duration, price, isActive: e.target.checked }); }}
-          />
-          Active
-        </label>
-      </>
-    ),
-  };
-}
+type ServiceValues = {
+  name: string;
+  nameAm: string;
+  description: string;
+  descriptionAm: string;
+  durationMinutes: string;
+  price: string;
+  isActive: boolean;
+};
 
 export function ServiceForm({
   mode,
@@ -91,8 +46,11 @@ export function ServiceForm({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [values, setValues] = useState<{ name: string; durationMinutes: string; price: string; isActive: boolean }>({
+  const [values, setValues] = useState<ServiceValues>({
     name: service?.name ?? "",
+    nameAm: service?.nameAm ?? "",
+    description: service?.description ?? "",
+    descriptionAm: service?.descriptionAm ?? "",
     durationMinutes: service?.durationMinutes?.toString() ?? "",
     price: service?.price ? Number(service.price).toString() : "",
     isActive: service?.isActive ?? true,
@@ -105,6 +63,9 @@ export function ServiceForm({
     try {
       const payload = {
         name: values.name,
+        nameAm: values.nameAm,
+        description: values.description,
+        descriptionAm: values.descriptionAm,
         durationMinutes: Number(values.durationMinutes),
         price: values.price,
         isActive: values.isActive,
@@ -147,6 +108,24 @@ export function ServiceForm({
             value={values.name}
             onChange={(e) => setValues({ ...values, name: e.target.value })}
             required
+          />
+          <Input
+            label={t.description}
+            value={values.description}
+            onChange={(e) => setValues({ ...values, description: e.target.value })}
+          />
+          <p className="text-xs font-semibold uppercase tracking-widest text-cream-muted">
+            {common.amharic}
+          </p>
+          <Input
+            label={t.nameAm}
+            value={values.nameAm}
+            onChange={(e) => setValues({ ...values, nameAm: e.target.value })}
+          />
+          <Input
+            label={t.descriptionAm}
+            value={values.descriptionAm}
+            onChange={(e) => setValues({ ...values, descriptionAm: e.target.value })}
           />
           <Input
             label={t.duration}
