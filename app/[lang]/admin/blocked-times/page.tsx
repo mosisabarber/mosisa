@@ -5,6 +5,7 @@
 import { Suspense } from "react";
 import { getBlockedTimes, getActiveBarbers } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
+import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
 import { Badge, Card, StateMessage } from "@/components/ui";
 
 function formatDt(d: Date): string {
@@ -24,14 +25,20 @@ function dtTime(d: Date): string {
   return new Date(d.getTime() + 3 * 3600 * 1000).toISOString().slice(11, 16);
 }
 
-export default async function AdminBlockedTimesPage() {
-  await requireAdmin();
+export default async function AdminBlockedTimesPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const t = await getAdminDictionary(lang);
+  await requireAdmin(lang);
   const [blocks, barbers] = await Promise.all([getBlockedTimes(), getActiveBarbers()]);
 
   return (
     <section className="space-y-6">
       <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
-        Blocked times
+        {t.blocked.title}
       </h1>
 
       <form
@@ -54,7 +61,7 @@ export default async function AdminBlockedTimesPage() {
           name="barber_id"
           className="h-11 w-full rounded-md border border-line bg-charcoal px-3.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
         >
-          <option value="">Entire shop (all barbers)</option>
+          <option value="">{t.blocked.entireShop}</option>
           {barbers.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -64,27 +71,33 @@ export default async function AdminBlockedTimesPage() {
         <input
           type="text"
           name="reason"
-          placeholder="Holiday, closure, etc."
+          placeholder={t.blocked.reasonPlaceholder}
           className="h-11 w-full rounded-md border border-line bg-charcoal px-3.5 text-sm text-cream placeholder:text-cream-muted focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
         />
         <button
           type="submit"
           className="h-11 w-full rounded-md bg-brass px-4 text-sm font-medium text-charcoal transition-colors hover:bg-brass-strong sm:col-span-2 sm:w-auto sm:justify-self-start"
         >
-          Block
+          {t.blocked.block}
         </button>
       </form>
 
       <Suspense fallback={<StateMessage state="loading" />}>
-        <BlockedTimesTable blocks={blocks} />
+        <BlockedTimesTable blocks={blocks} t={t} />
       </Suspense>
     </section>
   );
 }
 
-function BlockedTimesTable({ blocks }: { blocks: Awaited<ReturnType<typeof getBlockedTimes>> }) {
+function BlockedTimesTable({
+  blocks,
+  t,
+}: {
+  blocks: Awaited<ReturnType<typeof getBlockedTimes>>;
+  t: Awaited<ReturnType<typeof getAdminDictionary>>;
+}) {
   if (blocks.length === 0) {
-    return <StateMessage state="empty" title="No blocked times scheduled." />;
+    return <StateMessage state="empty" title={t.blocked.empty} />;
   }
 
   return (
@@ -94,10 +107,18 @@ function BlockedTimesTable({ blocks }: { blocks: Awaited<ReturnType<typeof getBl
         <table className="w-full min-w-[540px] text-sm">
           <thead className="bg-surface">
             <tr>
-              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Start</th>
-              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">End</th>
-              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Reason</th>
-              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Barber</th>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                {t.blocked.colStart}
+              </th>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                {t.blocked.colEnd}
+              </th>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                {t.blocked.colReason}
+              </th>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                {t.blocked.colBarber}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -106,7 +127,9 @@ function BlockedTimesTable({ blocks }: { blocks: Awaited<ReturnType<typeof getBl
                 <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.startDatetime)}</td>
                 <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.endDatetime)}</td>
                 <td className="px-4 py-2.5">{b.reason ?? "—"}</td>
-                <td className="px-4 py-2.5">{b.barberId ? `#${b.barberId.slice(0, 8)}` : "Shop-wide"}</td>
+                <td className="px-4 py-2.5">
+                  {b.barberId ? `#${b.barberId.slice(0, 8)}` : t.blocked.shopWide}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -119,15 +142,15 @@ function BlockedTimesTable({ blocks }: { blocks: Awaited<ReturnType<typeof getBl
           <li key={b.id} className="space-y-3 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium text-cream">
-                {b.reason ?? "Blocked time"}
+                {b.reason ?? t.blocked.blockedTime}
               </span>
               <Badge tone={b.barberId ? "navy" : "neutral"}>
-                {b.barberId ? `#${b.barberId.slice(0, 8)}` : "Shop-wide"}
+                {b.barberId ? `#${b.barberId.slice(0, 8)}` : t.blocked.shopWide}
               </Badge>
             </div>
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-              <dt className="text-cream-muted">Start</dt>
+              <dt className="text-cream-muted">{t.blocked.start}</dt>
               <dd className="text-right text-cream">
                 {dtDate(b.startDatetime)}
                 <span className="block text-xs text-cream-muted">
@@ -135,7 +158,7 @@ function BlockedTimesTable({ blocks }: { blocks: Awaited<ReturnType<typeof getBl
                 </span>
               </dd>
 
-              <dt className="text-cream-muted">End</dt>
+              <dt className="text-cream-muted">{t.blocked.end}</dt>
               <dd className="text-right text-cream">
                 {dtDate(b.endDatetime)}
                 <span className="block text-xs text-cream-muted">

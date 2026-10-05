@@ -26,3 +26,14 @@ export async function getDictionary(locale: string): Promise<Dictionary> {
 export function getLocale(locale: string): Locale {
   return isLocale(locale) ? locale : "en";
 }
+
+/**
+ * Admin section of the dictionary (`t.admin`) for the staff dashboard. Pages
+ * under `app/[lang]/admin` call this so they don't have to reach into the full
+ * public dictionary.
+ */
+export async function getAdminDictionary(
+  locale: string
+): Promise<Dictionary["admin"]> {
+  return (await getDictionary(locale)).admin;
+}

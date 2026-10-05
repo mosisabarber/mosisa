@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { getAppointments } from "@/lib/admin-data";
 import type { AppointmentList } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
+import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
 import { Badge, Card, StateMessage } from "@/components/ui";
 
 const STATUS_TONE: Record<string, "brass" | "forest" | "navy" | "warning" | "error" | "neutral"> =
@@ -37,11 +38,15 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export default async function AdminAppointmentsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ lang: string }>;
   searchParams: Promise<{ status?: string; search?: string; dateFrom?: string; dateTo?: string }>;
 }) {
-  await requireAdmin();
+  const { lang } = await params;
+  const t = await getAdminDictionary(lang);
+  await requireAdmin(lang);
   const sp = await searchParams;
   const status = sp.status as "confirmed" | "cancelled" | "completed" | "no_show" | undefined;
   const appointments = await getAppointments({
@@ -63,7 +68,7 @@ export default async function AdminAppointmentsPage({
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
-          Appointments
+          {t.appointments.title}
         </h1>
       </div>
 
@@ -72,7 +77,7 @@ export default async function AdminAppointmentsPage({
           type="text"
           name="search"
           defaultValue={sp.search}
-          placeholder="Customer name…"
+          placeholder={t.appointments.searchPlaceholder}
           className="h-11 w-full rounded-md border border-line bg-charcoal px-3.5 text-sm text-cream placeholder:text-cream-muted focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
         />
         <input
@@ -91,12 +96,12 @@ export default async function AdminAppointmentsPage({
           type="submit"
           className="h-11 w-full rounded-md bg-surface px-4 text-sm font-medium text-cream transition-colors hover:bg-surface-raised sm:w-auto"
         >
-          Filter
+          {t.appointments.filter}
         </button>
       </form>
 
       <Suspense fallback={<StateMessage state="loading" />}>
-        <AppointmentsTable appointments={appointments} />
+        <AppointmentsTable appointments={appointments} t={t} />
       </Suspense>
     </section>
   );
@@ -104,12 +109,22 @@ export default async function AdminAppointmentsPage({
 
 async function AppointmentsTable({
   appointments,
+  t,
 }: {
   appointments: AppointmentList[];
+  t: Awaited<ReturnType<typeof getAdminDictionary>>;
 }) {
   if (appointments.length === 0) {
-    return <StateMessage state="empty" title="No appointments found." />;
+    return <StateMessage state="empty" title={t.appointments.empty} />;
   }
+
+  const statusLabel = (s: string) =>
+    ({
+      confirmed: t.status.confirmed,
+      completed: t.status.completed,
+      cancelled: t.status.cancelled,
+      no_show: t.status.noShow,
+    })[s] ?? s;
 
   return (
     <Card className="overflow-hidden border-line p-0">
@@ -119,19 +134,19 @@ async function AppointmentsTable({
           <thead className="bg-surface">
             <tr>
               <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                When
+                {t.appointments.colWhen}
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                Customer
+                {t.appointments.colCustomer}
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                Service
+                {t.appointments.colService}
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                Barber
+                {t.appointments.colBarber}
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                Status
+                {t.appointments.colStatus}
               </th>
             </tr>
           </thead>
@@ -155,7 +170,7 @@ async function AppointmentsTable({
                 <td className="px-4 py-2.5">{a.barberName ?? "—"}</td>
                 <td className="px-4 py-2.5">
                   <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
-                    {a.status}
+                    {statusLabel(a.status)}
                   </Badge>
                 </td>
               </tr>
@@ -179,12 +194,12 @@ async function AppointmentsTable({
                 </span>
               </div>
               <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
-                {a.status}
+                {statusLabel(a.status)}
               </Badge>
             </div>
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-              <dt className="text-cream-muted">Customer</dt>
+              <dt className="text-cream-muted">{t.appointments.customer}</dt>
               <dd className="text-right text-cream">
                 {a.customerName}
                 <span className="block text-xs text-cream-muted">
@@ -192,10 +207,10 @@ async function AppointmentsTable({
                 </span>
               </dd>
 
-              <dt className="text-cream-muted">Service</dt>
+              <dt className="text-cream-muted">{t.appointments.service}</dt>
               <dd className="text-right text-cream">{a.serviceName ?? "—"}</dd>
 
-              <dt className="text-cream-muted">Barber</dt>
+              <dt className="text-cream-muted">{t.appointments.barber}</dt>
               <dd className="text-right text-cream">{a.barberName ?? "—"}</dd>
             </dl>
           </li>

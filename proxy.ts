@@ -51,8 +51,10 @@ export const config = {
    * Run on everything except:
    *   - `/api/*`              route handlers already locale-agnostic
    *   - `/_next/*`            build output + HMR
-   *   - `/admin/*`            staff dashboard is English-only
    *   - any path with a dot   favicon.ico, robots.txt, sitemap.xml, …
+   *
+   * `/admin/*` is intentionally matched so a bare `/admin` redirects to
+   * `/[lang]/admin/...`, keeping the staff dashboard bilingual.
    */
-  matcher: ["/((?!api|_next|admin|.*\\..*).*)"],
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };

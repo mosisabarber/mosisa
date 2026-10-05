@@ -5,27 +5,27 @@
  */
 import { getWorkingHours } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import type { WorkingHour } from "@/lib/admin-data";
 import { Button, Card } from "@/components/ui";
-
-const DAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
 
 function formatTimeField(t: string): string {
   // Postgres time column may come back as 'HH:mm:ss'; the <input> wants HH:mm.
   return t ? t.slice(0, 5) : "";
 }
 
-export default async function AdminHoursPage() {
-  await requireAdmin();
+export default async function AdminHoursPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const dict = await getDictionary(lang);
+  const t = dict.admin;
+  await requireAdmin(lang);
   const rows = await getWorkingHours();
+  // Day names come from the dictionary so Amharic gets እሁድ/ሰኞ… for free.
+  const days = dict.days.long;
   // Build a lookup so missing days render empty (and become upserts on save).
   const byDay = new Map<number, WorkingHour>();
   for (const row of rows) byDay.set(row.dayOfWeek, row);
@@ -33,7 +33,7 @@ export default async function AdminHoursPage() {
   return (
     <section className="space-y-6">
       <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
-        Working hours
+        {t.hours.title}
       </h1>
 
       <form action={saveHours}>
@@ -44,18 +44,18 @@ export default async function AdminHoursPage() {
               <thead className="bg-surface">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Day
+                    {t.hours.colDay}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Open
+                    {t.hours.colOpen}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Close
+                    {t.hours.colClose}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {DAYS.map((day, dow) => {
+                {days.map((day, dow) => {
                   const row = byDay.get(dow);
                   return (
                     <tr key={dow} className="border-t border-line">
@@ -87,7 +87,7 @@ export default async function AdminHoursPage() {
               the same `open_${dow}` / `close_${dow}` names as the table above so
               saveHours() receives the identical FormData shape. */}
           <ul className="divide-y divide-line md:hidden">
-            {DAYS.map((day, dow) => {
+            {days.map((day, dow) => {
               const row = byDay.get(dow);
               return (
                 <li key={dow} className="space-y-2 p-4">
@@ -95,7 +95,7 @@ export default async function AdminHoursPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <label className="flex flex-col gap-1.5">
                       <span className="text-xs font-medium text-cream-muted">
-                        Open
+                        {t.hours.colOpen}
                       </span>
                       <input
                         type="time"
@@ -106,7 +106,7 @@ export default async function AdminHoursPage() {
                     </label>
                     <label className="flex flex-col gap-1.5">
                       <span className="text-xs font-medium text-cream-muted">
-                        Close
+                        {t.hours.colClose}
                       </span>
                       <input
                         type="time"
@@ -127,7 +127,7 @@ export default async function AdminHoursPage() {
           variant="primary"
           className="mt-4 w-full sm:w-auto"
         >
-          Save hours
+          {t.hours.save}
         </Button>
       </form>
     </section>

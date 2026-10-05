@@ -13,8 +13,8 @@ import { LOCALE_TAGS, DEFAULT_LOCALE, isLocale } from "@/lib/i18n/config";
  * browser only honours the first one, which would discard the locale `lang`
  * and font variables). The locale comes from the `x-locale` request header set
  * by `proxy.ts`, so this root can render `lang={LOCALE_TAGS[locale]}` for the
- * `html[lang="am"]` rule in globals.css. /admin/* has no locale header →
- * falls back to `en`.
+ * `html[lang="am"]` rule in globals.css. Admin lives under `/[lang]/admin/...`
+ * too, so it carries the locale prefix and gets the same treatment.
  *
  * Font variables: English faces (Geist/Playfair) always; the Amharic local
  * faces (Loga Comic, Ebrima) are declared here too so their `@font-face` +
@@ -121,7 +121,7 @@ export const viewport: Viewport = {
 
 /**
  * Renders the single `<html>` for every route. The locale is read from the
- * `x-locale` header set by proxy.ts (absent on /admin/* → defaults to `en`).
+ * `x-locale` header set by proxy.ts (defaults to `en` when absent).
  */
 export default async function RootLayout({
   children,

@@ -6,19 +6,22 @@
 
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import { useLocaleHref } from "@/lib/i18n/links";
 import { Button } from "@/components/ui";
+import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 
-export function SignOutButton() {
+export function SignOutButton({ t }: { t: Dictionary["admin"] }) {
   const router = useRouter();
+  const href = useLocaleHref();
 
   async function handleSignOut() {
     await authClient.signOut();
-    router.replace("/admin/login");
+    router.replace(href("/admin/login"));
   }
 
   return (
     <Button variant="ghost" size="sm" onClick={handleSignOut}>
-      Sign out
+      {t.signOut}
     </Button>
   );
 }

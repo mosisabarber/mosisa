@@ -9,8 +9,22 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import type { Barber } from "@/lib/admin-data";
 import { Button, Input, Modal, Spinner } from "@/components/ui";
+import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 
-export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?: Barber }) {
+type BarbersT = Dictionary["admin"]["barbers"];
+type CommonT = Dictionary["admin"]["common"];
+
+export function BarberForm({
+  mode,
+  barber,
+  t,
+  common,
+}: {
+  mode: "create" | "edit";
+  barber?: Barber;
+  t: BarbersT;
+  common: CommonT;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -42,7 +56,7 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.message ?? `Upload failed (${res.status})`);
+        setError(data.message ?? `${t.uploadFailed} (${res.status})`);
       } else {
         const data = await res.json();
         if (data.url) {
@@ -50,7 +64,7 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
         }
       }
     } catch {
-      setError("Network error while uploading photo.");
+      setError(t.uploadNetworkError);
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -85,13 +99,13 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? `Save failed (${res.status})`);
+        setError(body.error ?? `${common.saveFailed} (${res.status})`);
       } else {
         setOpen(false);
         router.refresh();
       }
     } catch {
-      setError("Network error");
+      setError(common.networkError);
     } finally {
       setLoading(false);
     }
@@ -99,40 +113,40 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
 
   const trigger = mode === "create" ? (
     <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-      + New barber
+      {t.new}
     </Button>
   ) : (
     <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-      Edit
+      {common.edit}
     </Button>
   );
 
   return (
     <>
       {trigger}
-      <Modal open={open} onClose={() => setOpen(false)} title={mode === "create" ? "New barber" : "Edit barber"}>
+      <Modal open={open} onClose={() => setOpen(false)} title={mode === "create" ? t.newTitle : t.editTitle}>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           {error && <p className="text-sm text-error">{error}</p>}
-          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-          <Input label="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} required />
-          <Input label="Bio" value={bio} onChange={(e) => setBio(e.target.value)} />
+          <Input label={t.name} value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input label={t.slug} value={slug} onChange={(e) => setSlug(e.target.value)} required />
+          <Input label={t.bio} value={bio} onChange={(e) => setBio(e.target.value)} />
 
           {/* Photo Upload & Preview */}
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-cream-muted">Photo</span>
+            <span className="text-sm font-medium text-cream-muted">{t.photo}</span>
 
             <div className="flex items-center gap-4">
               <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-surface">
                 {photoUrl ? (
                   <Image
                     src={photoUrl}
-                    alt={name || "Barber photo"}
+                    alt={name || t.photoAlt}
                     fill
                     sizes="80px"
                     className="object-cover"
                   />
                 ) : (
-                  <span className="text-xs text-cream-muted">No photo</span>
+                  <span className="text-xs text-cream-muted">{t.noPhoto}</span>
                 )}
                 {uploading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-charcoal/80">
@@ -158,7 +172,7 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
                     disabled={uploading}
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    {uploading ? "Uploading…" : photoUrl ? "Change photo" : "Upload photo"}
+                    {uploading ? t.uploading : photoUrl ? t.changePhoto : t.upload}
                   </Button>
 
                   {photoUrl && (
@@ -169,20 +183,20 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
                       disabled={uploading}
                       onClick={() => setPhotoUrl("")}
                     >
-                      Remove
+                      {t.remove}
                     </Button>
                   )}
                 </div>
 
                 <p className="text-[11px] text-cream-muted">
-                  JPG, PNG, WebP or AVIF (Max 5MB)
+                  {t.uploadHint}
                 </p>
               </div>
             </div>
 
             {/* Direct URL input fallback */}
             <details className="mt-1 text-xs text-cream-muted">
-              <summary className="cursor-pointer hover:text-cream">Or enter image URL manually</summary>
+              <summary className="cursor-pointer hover:text-cream">{t.urlManual}</summary>
               <div className="mt-2">
                 <Input
                   hideLabel
@@ -195,23 +209,23 @@ export function BarberForm({ mode, barber }: { mode: "create" | "edit"; barber?:
           </div>
 
           <Input
-            label="Buffer (minutes)"
+            label={t.buffer}
             type="number"
             min={0}
             value={buffer}
             onChange={(e) => setBuffer(e.target.value)}
           />
           <Input
-            label="Specialties (comma-separated)"
+            label={t.specialties}
             value={specialties}
             onChange={(e) => setSpecialties(e.target.value)}
           />
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-            Active
+            {common.active}
           </label>
           <Button type="submit" variant="primary" fullWidth loading={loading}>
-            {loading ? "Saving…" : mode === "create" ? "Create" : "Save"}
+            {loading ? common.saving : mode === "create" ? common.create : common.save}
           </Button>
         </form>
       </Modal>

@@ -9,6 +9,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Service } from "@/lib/admin-data";
 import { Button, Input, Modal } from "@/components/ui";
+import type { Dictionary } from "@/lib/i18n/dictionaries/en";
+
+type ServicesT = Dictionary["admin"]["services"];
+type CommonT = Dictionary["admin"]["common"];
 
 async function submit(action: "create" | "edit", payload: Record<string, unknown>, id?: string) {
   const res = await fetch("/api/admin/services" + (id && action === "edit" ? `?id=${id}` : ""), {
@@ -74,7 +78,15 @@ function ServiceFields({
   };
 }
 
-export function ServiceForm({ mode, service }: { mode: "create"; service?: undefined } | { mode: "edit"; service: Service }) {
+export function ServiceForm({
+  mode,
+  service,
+  t,
+  common,
+}: ({ mode: "create"; service?: undefined } | { mode: "edit"; service: Service }) & {
+  t: ServicesT;
+  common: CommonT;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -100,13 +112,13 @@ export function ServiceForm({ mode, service }: { mode: "create"; service?: undef
       const res = await submit(mode, payload, service?.id);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(body.error ?? `Save failed (${res.status})`);
+        setError(body.error ?? `${common.saveFailed} (${res.status})`);
       } else {
         setOpen(false);
         router.refresh();
       }
     } catch (err) {
-      setError("Network error");
+      setError(common.networkError);
     } finally {
       setLoading(false);
     }
@@ -114,30 +126,30 @@ export function ServiceForm({ mode, service }: { mode: "create"; service?: undef
 
   const trigger = mode === "create" ? (
     <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
-      + New service
+      {t.new}
     </Button>
   ) : (
     <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-      Edit
+      {common.edit}
     </Button>
   );
 
   return (
     <>
       {trigger}
-      <Modal open={open} onClose={() => setOpen(false)} title={mode === "create" ? "New service" : "Edit service"}>
+      <Modal open={open} onClose={() => setOpen(false)} title={mode === "create" ? t.newTitle : t.editTitle}>
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
           {error && (
             <p className="text-sm text-error">{error}</p>
           )}
           <Input
-            label="Name"
+            label={t.name}
             value={values.name}
             onChange={(e) => setValues({ ...values, name: e.target.value })}
             required
           />
           <Input
-            label="Duration (minutes)"
+            label={t.duration}
             type="number"
             min={1}
             value={values.durationMinutes}
@@ -145,7 +157,7 @@ export function ServiceForm({ mode, service }: { mode: "create"; service?: undef
             required
           />
           <Input
-            label="Price (ETB)"
+            label={t.price}
             type="number"
             min={0}
             step="0.01"
@@ -159,10 +171,10 @@ export function ServiceForm({ mode, service }: { mode: "create"; service?: undef
               checked={values.isActive}
               onChange={(e) => setValues({ ...values, isActive: e.target.checked })}
             />
-            Active
+            {t.active}
           </label>
           <Button type="submit" variant="primary" fullWidth loading={loading}>
-            {loading ? "Saving…" : mode === "create" ? "Create" : "Save"}
+            {loading ? common.saving : mode === "create" ? common.create : common.save}
           </Button>
         </form>
       </Modal>

@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { getTodaysAppointments, type AppointmentList } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
+import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
 import { Badge, Button, Card, StateMessage } from "@/components/ui";
 import { AddToCalendar } from "@/components/admin/AddToCalendar";
 
@@ -29,20 +30,33 @@ function formatAddis(date: Date): string {
   return `${datePart} ${timePart} (UTC+3)`;
 }
 
-export default async function AdminDashboardPage() {
-  // Gate: redirect to /admin/login if not authenticated.
-  const session = await requireAdmin();
+export default async function AdminDashboardPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const t = await getAdminDictionary(lang);
+  // Gate: redirect to the locale-prefixed login page if not authenticated.
+  const session = await requireAdmin(lang);
   const appointments = await getTodaysAppointments();
+  const statusLabel = (s: string) =>
+    ({
+      confirmed: t.status.confirmed,
+      completed: t.status.completed,
+      cancelled: t.status.cancelled,
+      no_show: t.status.noShow,
+    })[s] ?? s;
 
   return (
     <section className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
-          Today&apos;s appointments
+          {t.dashboard.title}
         </h1>
-        <Link href="/admin/appointments">
+        <Link href={`/${lang}/admin/appointments`}>
           <Button variant="secondary" size="sm">
-            All appointments →
+            {t.dashboard.allAppointments}
           </Button>
         </Link>
       </div>
@@ -50,8 +64,8 @@ export default async function AdminDashboardPage() {
       {appointments.length === 0 ? (
         <StateMessage
           state="empty"
-          title="No appointments today"
-          description="Bookings for today will appear here once made."
+          title={t.dashboard.emptyTitle}
+          description={t.dashboard.emptyBody}
         />
       ) : (
         <Card className="overflow-hidden border-line p-0">
@@ -61,19 +75,19 @@ export default async function AdminDashboardPage() {
               <thead className="bg-surface">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Time
+                    {t.dashboard.colTime}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Customer
+                    {t.dashboard.colCustomer}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Service / Barber
+                    {t.dashboard.colServiceBarber}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Status
+                    {t.dashboard.colStatus}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Manage
+                    {t.dashboard.colManage}
                   </th>
                 </tr>
               </thead>
@@ -104,7 +118,7 @@ export default async function AdminDashboardPage() {
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
-                        {a.status}
+                        {statusLabel(a.status)}
                       </Badge>
                     </td>
                     <td className="px-4 py-2.5">
@@ -125,12 +139,12 @@ export default async function AdminDashboardPage() {
                     {formatAddis(a.startDatetime)}
                   </span>
                   <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
-                    {a.status}
+                    {statusLabel(a.status)}
                   </Badge>
                 </div>
 
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-                  <dt className="text-cream-muted">Customer</dt>
+                  <dt className="text-cream-muted">{t.dashboard.customer}</dt>
                   <dd className="text-right text-cream">
                     {a.customerName}
                     <span className="block text-xs text-cream-muted">
@@ -138,12 +152,12 @@ export default async function AdminDashboardPage() {
                     </span>
                   </dd>
 
-                  <dt className="text-cream-muted">Service</dt>
+                  <dt className="text-cream-muted">{t.dashboard.service}</dt>
                   <dd className="text-right text-cream">
                     {a.serviceName ?? "—"}
                   </dd>
 
-                  <dt className="text-cream-muted">Barber</dt>
+                  <dt className="text-cream-muted">{t.dashboard.barber}</dt>
                   <dd className="text-right text-cream">
                     {a.barberName ?? "—"}
                   </dd>

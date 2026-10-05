@@ -10,24 +10,31 @@ import { getAllServices } from "@/lib/admin-data";
 import { Badge, Card, StateMessage } from "@/components/ui";
 import { ServiceForm } from "@/components/admin/ServiceForm";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
+import { getAdminDictionary } from "@/lib/i18n/get-dictionary";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminServicesPage() {
-  await requireAdmin();
+export default async function AdminServicesPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const t = await getAdminDictionary(lang);
+  await requireAdmin(lang);
   const services = await getAllServices();
 
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
-          Services
+          {t.services.title}
         </h1>
-        <ServiceForm mode="create" />
+        <ServiceForm mode="create" t={t.services} common={t.common} />
       </div>
 
       {services.length === 0 ? (
-        <StateMessage state="empty" title="No services yet" />
+        <StateMessage state="empty" title={t.services.empty} />
       ) : (
         <Card className="overflow-hidden p-0">
           {/* Wide screens: the full table. */}
@@ -36,16 +43,16 @@ export default async function AdminServicesPage() {
               <thead className="bg-surface">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Name
+                    {t.services.colName}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Duration
+                    {t.services.colDuration}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Price
+                    {t.services.colPrice}
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                    Active
+                    {t.services.colActive}
                   </th>
                   <th className="px-4 py-2.5"></th>
                 </tr>
@@ -54,13 +61,15 @@ export default async function AdminServicesPage() {
                 {services.map((s) => (
                   <tr key={s.id} className="border-t border-line">
                     <td className="px-4 py-2.5">{s.name}</td>
-                    <td className="px-4 py-2.5">{s.durationMinutes} min</td>
+                    <td className="px-4 py-2.5">
+                      {s.durationMinutes} {t.common.min}
+                    </td>
                     <td className="px-4 py-2.5">{Number(s.price).toFixed(2)}</td>
                     <td className="px-4 py-2.5">
-                      {s.isActive ? "yes" : "no"}
+                      {s.isActive ? t.common.yes : t.common.no}
                     </td>
                     <td className="px-4 py-2.5 text-right">
-                      <ServiceForm mode="edit" service={s} />
+                      <ServiceForm mode="edit" service={s} t={t.services} common={t.common} />
                     </td>
                   </tr>
                 ))}
@@ -75,23 +84,23 @@ export default async function AdminServicesPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium text-cream">{s.name}</span>
                   <Badge tone={s.isActive ? "forest" : "neutral"}>
-                    {s.isActive ? "Active" : "Inactive"}
+                    {s.isActive ? t.common.active : t.common.inactive}
                   </Badge>
                 </div>
 
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-                  <dt className="text-cream-muted">Duration</dt>
+                  <dt className="text-cream-muted">{t.services.colDuration}</dt>
                   <dd className="text-right text-cream">
-                    {s.durationMinutes} min
+                    {s.durationMinutes} {t.common.min}
                   </dd>
 
-                  <dt className="text-cream-muted">Price</dt>
+                  <dt className="text-cream-muted">{t.services.colPrice}</dt>
                   <dd className="text-right text-cream">
-                    {Number(s.price).toFixed(2)} ETB
+                    {Number(s.price).toFixed(2)} {t.common.etb}
                   </dd>
                 </dl>
 
-                <ServiceForm mode="edit" service={s} />
+                <ServiceForm mode="edit" service={s} t={t.services} common={t.common} />
               </li>
             ))}
           </ul>
