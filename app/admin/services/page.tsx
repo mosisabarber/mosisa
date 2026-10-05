@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { getAllServices } from "@/lib/admin-data";
-import { Button, Card, StateMessage } from "@/components/ui";
+import { Badge, Card, StateMessage } from "@/components/ui";
 import { ServiceForm } from "@/components/admin/ServiceForm";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
 
@@ -19,8 +19,8 @@ export default async function AdminServicesPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl font-semibold text-cream">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
           Services
         </h1>
         <ServiceForm mode="create" />
@@ -29,41 +29,72 @@ export default async function AdminServicesPage() {
       {services.length === 0 ? (
         <StateMessage state="empty" title="No services yet" />
       ) : (
-        <Card className="p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
-              <tr>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Name
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Duration
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Price
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Active
-                </th>
-                <th className="px-4 py-2.5"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((s) => (
-                <tr key={s.id} className="border-t border-line">
-                  <td className="px-4 py-2.5">{s.name}</td>
-                  <td className="px-4 py-2.5">{s.durationMinutes} min</td>
-                  <td className="px-4 py-2.5">{Number(s.price).toFixed(2)}</td>
-                  <td className="px-4 py-2.5">
-                    {s.isActive ? "yes" : "no"}
-                  </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <ServiceForm mode="edit" service={s} />
-                  </td>
+        <Card className="overflow-hidden p-0">
+          {/* Wide screens: the full table. */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead className="bg-surface">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Name
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Duration
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Price
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Active
+                  </th>
+                  <th className="px-4 py-2.5"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {services.map((s) => (
+                  <tr key={s.id} className="border-t border-line">
+                    <td className="px-4 py-2.5">{s.name}</td>
+                    <td className="px-4 py-2.5">{s.durationMinutes} min</td>
+                    <td className="px-4 py-2.5">{Number(s.price).toFixed(2)}</td>
+                    <td className="px-4 py-2.5">
+                      {s.isActive ? "yes" : "no"}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <ServiceForm mode="edit" service={s} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Phones: one card per service, no horizontal scrolling. */}
+          <ul className="divide-y divide-line md:hidden">
+            {services.map((s) => (
+              <li key={s.id} className="space-y-3 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-cream">{s.name}</span>
+                  <Badge tone={s.isActive ? "forest" : "neutral"}>
+                    {s.isActive ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                  <dt className="text-cream-muted">Duration</dt>
+                  <dd className="text-right text-cream">
+                    {s.durationMinutes} min
+                  </dd>
+
+                  <dt className="text-cream-muted">Price</dt>
+                  <dd className="text-right text-cream">
+                    {Number(s.price).toFixed(2)} ETB
+                  </dd>
+                </dl>
+
+                <ServiceForm mode="edit" service={s} />
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
     </section>

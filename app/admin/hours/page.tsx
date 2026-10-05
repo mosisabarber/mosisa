@@ -32,56 +32,101 @@ export default async function AdminHoursPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl font-semibold text-cream">
+      <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
         Working hours
       </h1>
 
       <form action={saveHours}>
-        <Card className="p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
-              <tr>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Day
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Open
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Close
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {DAYS.map((day, dow) => {
-                const row = byDay.get(dow);
-                return (
-                  <tr key={dow} className="border-t border-line">
-                    <td className="px-4 py-2.5">{day}</td>
-                    <td className="px-4 py-2.5">
+        <Card className="overflow-hidden p-0">
+          {/* Wide screens: the full table. */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[480px] text-sm">
+              <thead className="bg-surface">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Day
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Open
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Close
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {DAYS.map((day, dow) => {
+                  const row = byDay.get(dow);
+                  return (
+                    <tr key={dow} className="border-t border-line">
+                      <td className="px-4 py-2.5 whitespace-nowrap">{day}</td>
+                      <td className="px-4 py-2.5">
+                        <input
+                          type="time"
+                          name={`open_${dow}`}
+                          defaultValue={formatTimeField(row?.startTime ?? "")}
+                          className="h-9 w-full min-w-28 rounded-md border border-line bg-charcoal px-2.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
+                        />
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <input
+                          type="time"
+                          name={`close_${dow}`}
+                          defaultValue={formatTimeField(row?.endTime ?? "")}
+                          className="h-9 w-full min-w-28 rounded-md border border-line bg-charcoal px-2.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Phones: one card per day, no horizontal scrolling. The inputs keep
+              the same `open_${dow}` / `close_${dow}` names as the table above so
+              saveHours() receives the identical FormData shape. */}
+          <ul className="divide-y divide-line md:hidden">
+            {DAYS.map((day, dow) => {
+              const row = byDay.get(dow);
+              return (
+                <li key={dow} className="space-y-2 p-4">
+                  <p className="text-sm font-medium text-cream">{day}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-cream-muted">
+                        Open
+                      </span>
                       <input
                         type="time"
                         name={`open_${dow}`}
                         defaultValue={formatTimeField(row?.startTime ?? "")}
-                        className="w-full text-sm"
+                        className="h-11 w-full rounded-md border border-line bg-charcoal px-2.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
                       />
-                    </td>
-                    <td className="px-4 py-2.5">
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-cream-muted">
+                        Close
+                      </span>
                       <input
                         type="time"
                         name={`close_${dow}`}
                         defaultValue={formatTimeField(row?.endTime ?? "")}
-                        className="w-full text-sm"
+                        className="h-11 w-full rounded-md border border-line bg-charcoal px-2.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
                       />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </label>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </Card>
 
-        <Button type="submit" variant="primary" className="mt-4">
+        <Button
+          type="submit"
+          variant="primary"
+          className="mt-4 w-full sm:w-auto"
+        >
           Save hours
         </Button>
       </form>

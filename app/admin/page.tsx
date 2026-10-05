@@ -36,8 +36,8 @@ export default async function AdminDashboardPage() {
 
   return (
     <section className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="font-heading text-2xl font-semibold text-cream">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
           Today&apos;s appointments
         </h1>
         <Link href="/admin/appointments">
@@ -55,63 +55,104 @@ export default async function AdminDashboardPage() {
         />
       ) : (
         <Card className="overflow-hidden border-line p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
-              <tr>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Time
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Customer
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Service / Barber
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Status
-                </th>
-                <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
-                  Manage
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.map((a) => (
-                <tr
-                  key={a.id}
-                  className="border-t border-line odd:bg-charcoal even:bg-surface/30"
-                >
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    {formatAddis(a.startDatetime)}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div>
-                      <span className="font-medium text-cream">
-                        {a.customerName}
-                      </span>
-                      <span className="block text-xs text-cream-muted">
-                        {a.customerPhone}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <div>{a.serviceName}</div>
-                    <div className="text-xs text-cream-muted">
-                      {a.barberName}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
-                      {a.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <AddToCalendar appointment={a} />
-                  </td>
+          {/* Wide screens: the full table. */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[680px] text-sm">
+              <thead className="bg-surface">
+                <tr>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Time
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Customer
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Service / Barber
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Status
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-cream-muted">
+                    Manage
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {appointments.map((a) => (
+                  <tr
+                    key={a.id}
+                    className="border-t border-line odd:bg-charcoal even:bg-surface/30"
+                  >
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      {formatAddis(a.startDatetime)}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div>
+                        <span className="font-medium text-cream">
+                          {a.customerName}
+                        </span>
+                        <span className="block text-xs text-cream-muted">
+                          {a.customerPhone}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div>{a.serviceName}</div>
+                      <div className="text-xs text-cream-muted">
+                        {a.barberName}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
+                        {a.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <AddToCalendar appointment={a} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Phones: one card per appointment, no horizontal scrolling. */}
+          <ul className="divide-y divide-line md:hidden">
+            {appointments.map((a) => (
+              <li key={a.id} className="space-y-3 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-cream">
+                    {formatAddis(a.startDatetime)}
+                  </span>
+                  <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
+                    {a.status}
+                  </Badge>
+                </div>
+
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                  <dt className="text-cream-muted">Customer</dt>
+                  <dd className="text-right text-cream">
+                    {a.customerName}
+                    <span className="block text-xs text-cream-muted">
+                      {a.customerPhone}
+                    </span>
+                  </dd>
+
+                  <dt className="text-cream-muted">Service</dt>
+                  <dd className="text-right text-cream">
+                    {a.serviceName ?? "—"}
+                  </dd>
+
+                  <dt className="text-cream-muted">Barber</dt>
+                  <dd className="text-right text-cream">
+                    {a.barberName ?? "—"}
+                  </dd>
+                </dl>
+
+                <AddToCalendar appointment={a} />
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
     </section>

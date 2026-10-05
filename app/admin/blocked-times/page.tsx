@@ -5,11 +5,23 @@
 import { Suspense } from "react";
 import { getBlockedTimes, getActiveBarbers } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
-import { Card, StateMessage } from "@/components/ui";
+import { Badge, Card, StateMessage } from "@/components/ui";
 
 function formatDt(d: Date): string {
   const iso = new Date(d.getTime() + 3 * 3600 * 1000).toISOString();
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} (UTC+3)`;
+}
+
+/**
+ * Compact Addis Ababa date + time for the phone card layout — "YYYY-MM-DD" and
+ * "HH:mm" separately, so each fits a card line without wrapping.
+ */
+function dtDate(d: Date): string {
+  return new Date(d.getTime() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+function dtTime(d: Date): string {
+  return new Date(d.getTime() + 3 * 3600 * 1000).toISOString().slice(11, 16);
 }
 
 export default async function AdminBlockedTimesPage() {
@@ -18,14 +30,30 @@ export default async function AdminBlockedTimesPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="font-heading text-2xl font-semibold text-cream">
+      <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
         Blocked times
       </h1>
 
-      <form action={createBlock} className="grid grid-cols-1 gap-4 sm:max-w-xl">
-        <input type="date" name="start" required />
-        <input type="date" name="end" required />
-        <select name="barber_id">
+      <form
+        action={createBlock}
+        className="grid grid-cols-1 gap-4 sm:max-w-xl sm:grid-cols-2"
+      >
+        <input
+          type="date"
+          name="start"
+          required
+          className="h-11 w-full rounded-md border border-line bg-charcoal px-3.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
+        />
+        <input
+          type="date"
+          name="end"
+          required
+          className="h-11 w-full rounded-md border border-line bg-charcoal px-3.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
+        />
+        <select
+          name="barber_id"
+          className="h-11 w-full rounded-md border border-line bg-charcoal px-3.5 text-sm text-cream focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
+        >
           <option value="">Entire shop (all barbers)</option>
           {barbers.map((b) => (
             <option key={b.id} value={b.id}>
@@ -33,10 +61,15 @@ export default async function AdminBlockedTimesPage() {
             </option>
           ))}
         </select>
-        <input type="text" name="reason" placeholder="Holiday, closure, etc." />
+        <input
+          type="text"
+          name="reason"
+          placeholder="Holiday, closure, etc."
+          className="h-11 w-full rounded-md border border-line bg-charcoal px-3.5 text-sm text-cream placeholder:text-cream-muted focus:border-brass focus:ring-1 focus:ring-brass/40 focus:outline-none"
+        />
         <button
           type="submit"
-          className="rounded-md bg-brass px-4 py-2 text-sm font-medium text-charcoal hover:bg-brass-strong"
+          className="h-11 w-full rounded-md bg-brass px-4 text-sm font-medium text-charcoal transition-colors hover:bg-brass-strong sm:col-span-2 sm:w-auto sm:justify-self-start"
         >
           Block
         </button>
@@ -55,27 +88,64 @@ function BlockedTimesTable({ blocks }: { blocks: Awaited<ReturnType<typeof getBl
   }
 
   return (
-    <Card className="p-0">
-      <table className="w-full text-sm">
-        <thead className="bg-surface">
-          <tr>
-            <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Start</th>
-            <th className="px-4 py-2.5 text-left font-medium text-cream-muted">End</th>
-            <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Reason</th>
-            <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Barber</th>
-          </tr>
-        </thead>
-        <tbody>
-          {blocks.map((b) => (
-            <tr key={b.id} className="border-t border-line">
-              <td className="px-4 py-2.5">{formatDt(b.startDatetime)}</td>
-              <td className="px-4 py-2.5">{formatDt(b.endDatetime)}</td>
-              <td className="px-4 py-2.5">{b.reason ?? "—"}</td>
-              <td className="px-4 py-2.5">{b.barberId ? `#${b.barberId.slice(0, 8)}` : "Shop-wide"}</td>
+    <Card className="overflow-hidden p-0">
+      {/* Wide screens: the full table. */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[540px] text-sm">
+          <thead className="bg-surface">
+            <tr>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Start</th>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">End</th>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Reason</th>
+              <th className="px-4 py-2.5 text-left font-medium text-cream-muted">Barber</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {blocks.map((b) => (
+              <tr key={b.id} className="border-t border-line">
+                <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.startDatetime)}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.endDatetime)}</td>
+                <td className="px-4 py-2.5">{b.reason ?? "—"}</td>
+                <td className="px-4 py-2.5">{b.barberId ? `#${b.barberId.slice(0, 8)}` : "Shop-wide"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Phones: one card per block, no horizontal scrolling. */}
+      <ul className="divide-y divide-line md:hidden">
+        {blocks.map((b) => (
+          <li key={b.id} className="space-y-3 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-cream">
+                {b.reason ?? "Blocked time"}
+              </span>
+              <Badge tone={b.barberId ? "navy" : "neutral"}>
+                {b.barberId ? `#${b.barberId.slice(0, 8)}` : "Shop-wide"}
+              </Badge>
+            </div>
+
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+              <dt className="text-cream-muted">Start</dt>
+              <dd className="text-right text-cream">
+                {dtDate(b.startDatetime)}
+                <span className="block text-xs text-cream-muted">
+                  {dtTime(b.startDatetime)}
+                </span>
+              </dd>
+
+              <dt className="text-cream-muted">End</dt>
+              <dd className="text-right text-cream">
+                {dtDate(b.endDatetime)}
+                <span className="block text-xs text-cream-muted">
+                  {dtTime(b.endDatetime)}
+                </span>
+              </dd>
+            </dl>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
