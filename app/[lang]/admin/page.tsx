@@ -3,15 +3,25 @@
  * appointments; services, barbers, hours, and blocked times are managed on
  * their dedicated pages linked from the sidebar).
  *
- * Reads "today" appointments from the DB. Renders an empty state instead of
- * crashing if the DB is unavailable or unseeded.
+ * Reads the appointments for the selected range (?range=today by default,
+ * bounded on Addis midnight). Renders an empty state instead of crashing if the
+ * DB is unavailable or unseeded.
  */
-import Link from "next/link";
-import { getTodaysAppointments, type AppointmentList } from "@/lib/admin-data";
+import { getAppointmentsForRange, type AppointmentList } from "@/lib/admin-data";
+import { parseAppointmentRange } from "@/lib/admin-ranges";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
 import { NameCell } from "@/components/admin/NameCell";
-import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
-import { Badge, Button, Card, StateMessage } from "@/components/ui";
+import { RangeSelect } from "@/components/admin/RangeSelect";
+import { getAdminDictionary, getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
+import { localeNames } from "@/lib/i18n/locale-names";
+import { formatTemplate } from "@/lib/i18n/format";
+import {
+  ADDIS_OFFSET_MS,
+  formatAddisDateLabel,
+  formatAddisTimeLabel,
+  type DateLabelNames,
+} from "@/lib/booking/time";
+import { Badge, Card, StateMessage } from "@/components/ui";
 import { AddToCalendar } from "@/components/admin/AddToCalendar";
 
 const STATUS_TONE: Record<string, "brass" | "forest" | "navy" | "warning" | "error" | "neutral"> =
@@ -22,26 +32,40 @@ const STATUS_TONE: Record<string, "brass" | "forest" | "navy" | "warning" | "err
     no_show: "warning",
   };
 
-function formatAddis(date: Date): string {
-  // Ethiopia is UTC+3 year-round; reuse the existing time helper's approach
-  // without importing it here (keeps server-only code lean).
-  const iso = new Date(date.getTime() + 3 * 3600 * 1000).toISOString();
-  const datePart = iso.slice(0, 10);
-  const timePart = iso.slice(11, 16);
-  return `${datePart} ${timePart} (UTC+3)`;
+/**
+ * Addis wall-clock stamp (Ethiopia is UTC+3 year-round). English keeps the
+ * compact staff triage format; Amharic renders the Ethiopian calendar and the
+ * 6:00 clock, which already read as local time — so the UTC+3 note is dropped.
+ */
+function formatAddis(date: Date, names: DateLabelNames): string {
+  const iso = new Date(date.getTime() + ADDIS_OFFSET_MS).toISOString();
+  const dateKey = iso.slice(0, 10);
+  const time = iso.slice(11, 16);
+  return names.ethiopian
+    ? `${formatAddisDateLabel(dateKey, names)} ${formatAddisTimeLabel(time, names)}`
+    : `${dateKey} ${time} (UTC+3)`;
 }
 
 export default async function AdminDashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ range?: string }>;
 }) {
   const { lang } = await params;
-  const t = await getAdminDictionary(lang);
+  const [t, dict] = await Promise.all([
+    getAdminDictionary(lang),
+    getDictionary(lang),
+  ]);
   const locale = getLocale(lang);
+  const names = localeNames(locale, dict);
   // Gate: redirect to the locale-prefixed login page if not authenticated.
   const session = await requireAdmin(lang);
-  const appointments = await getTodaysAppointments();
+  const sp = await searchParams;
+  const range = parseAppointmentRange(sp.range) ?? "today";
+  const appointments = await getAppointmentsForRange(range);
+  const rangeLabel = t.ranges[range];
   const statusLabel = (s: string) =>
     ({
       confirmed: t.status.confirmed,
@@ -54,20 +78,23 @@ export default async function AdminDashboardPage({
     <section className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
-          {t.dashboard.title}
+          {t.dashboard.headings[range]}
         </h1>
-        <Link href={`/${lang}/admin/appointments`}>
-          <Button variant="secondary" size="sm">
-            {t.dashboard.allAppointments}
-          </Button>
-        </Link>
+        <RangeSelect
+          value={range}
+          t={t.ranges}
+          basePath="/admin"
+          allHrefPath="/admin/appointments"
+        />
       </div>
 
       {appointments.length === 0 ? (
         <StateMessage
           state="empty"
-          title={t.dashboard.emptyTitle}
-          description={t.dashboard.emptyBody}
+          title={formatTemplate(t.dashboard.emptyTitle, { range: rangeLabel })}
+          description={formatTemplate(t.dashboard.emptyBody, {
+            range: rangeLabel,
+          })}
         />
       ) : (
         <Card className="overflow-hidden border-line p-0">
@@ -100,7 +127,7 @@ export default async function AdminDashboardPage({
                     className="border-t border-line odd:bg-charcoal even:bg-surface/30"
                   >
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      {formatAddis(a.startDatetime)}
+                      {formatAddis(a.startDatetime, names)}
                     </td>
                     <td className="px-4 py-2.5">
                       <div>
@@ -140,7 +167,7 @@ export default async function AdminDashboardPage({
               <li key={a.id} className="space-y-3 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-sm font-medium text-cream">
-                    {formatAddis(a.startDatetime)}
+                    {formatAddis(a.startDatetime, names)}
                   </span>
                   <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>
                     {statusLabel(a.status)}

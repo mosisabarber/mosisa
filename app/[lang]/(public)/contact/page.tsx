@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Card } from "@/components/ui";
 import { getWorkingHours } from "@/lib/data";
+import { formatHoursLabel } from "@/lib/booking/time";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
+import { localeNames } from "@/lib/i18n/locale-names";
 
 export async function generateMetadata({
   params,
@@ -24,21 +26,20 @@ export async function generateMetadata({
 
 export const revalidate = 60;
 
-function formatTime(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const period = h < 12 ? "AM" : "PM";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
-}
-
 export default async function ContactPage({
   params,
 }: {
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const [hours, t] = await Promise.all([getWorkingHours(), getDictionary(lang)]);
+  const [hours, t, locale] = await Promise.all([
+    getWorkingHours(),
+    getDictionary(lang),
+    getLocale(lang),
+  ]);
   const dayNames = t.days.long;
+  // Amharic renders the Ethiopian 6:00 clock (9:00 AM → 3:00 ጠዋት).
+  const names = localeNames(locale, t);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-14">
@@ -113,7 +114,8 @@ export default async function ContactPage({
                   {dayNames[row.dayOfWeek]}
                 </span>
                 <span>
-                  {formatTime(row.startTime)} – {formatTime(row.endTime)}
+                  {formatHoursLabel(row.startTime, names)} –{" "}
+                  {formatHoursLabel(row.endTime, names)}
                 </span>
               </li>
             ))}

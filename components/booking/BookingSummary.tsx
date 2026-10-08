@@ -1,7 +1,7 @@
 import {
-  formatAddisTime,
   addisDateKey,
   formatAddisDateLabel,
+  formatAddisSlotLabel,
   type DateLabelNames,
 } from "@/lib/booking/time";
 
@@ -9,7 +9,8 @@ export interface BookingSummaryProps {
   barberName: string;
   serviceName: string;
   durationMinutes: number;
-  price: string;
+  /** null → no price set for the service. */
+  price: string | null;
   slotIso: string | null;
   /** Customer name/phone/email — shown on the confirm step when provided. */
   customerName?: string;
@@ -24,7 +25,7 @@ export interface BookingSummaryProps {
   onEditDetails?: () => void;
   /** Note shown under the sidebar variant; localized by the booking flow. */
   cancellationNote?: string;
-  /** Localized weekday/month names so the date label follows the locale. */
+  /** Locale names so the date *and* the clock follow the locale. */
   dateNames?: DateLabelNames;
   labels?: {
     title: string;
@@ -107,7 +108,7 @@ export function BookingSummary({
             <span className="text-right">
               {formatAddisDateLabel(addisDateKey(Date.parse(slotIso)), dateNames)}
               <br />
-              {formatAddisTime(Date.parse(slotIso))} (Harar)
+              {formatAddisSlotLabel(slotIso, dateNames)} (Harar)
             </span>
           ) : (
             <span className="text-cream-muted">{l.pickTime}</span>
@@ -138,7 +139,7 @@ export function BookingSummary({
       <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
         <span className="text-sm text-cream-muted">{l.price}</span>
         <span className="font-heading text-2xl font-semibold text-brass-strong">
-          {price} {l.birr}
+          {price ? `${price} ${l.birr}` : "—"}
         </span>
       </div>
 

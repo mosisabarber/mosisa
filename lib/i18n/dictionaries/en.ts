@@ -414,11 +414,25 @@ const en = {
       amharic: "Amharic (optional)",
     },
 
+    /** Shared by the dashboard and the appointments-list range dropdown. */
+    ranges: {
+      label: "Show",
+      today: "Today",
+      tomorrow: "Tomorrow",
+      dayAfter: "Day after tomorrow",
+      week: "This week",
+      all: "All appointments",
+    },
+
     dashboard: {
-      title: "Today's appointments",
-      allAppointments: "All appointments →",
-      emptyTitle: "No appointments today",
-      emptyBody: "Bookings for today will appear here once made.",
+      headings: {
+        today: "Today's appointments",
+        tomorrow: "Tomorrow's appointments",
+        dayAfter: "Day after tomorrow's appointments",
+        week: "This week's appointments",
+      },
+      emptyTitle: "No appointments for {range}",
+      emptyBody: "Bookings for {range} will appear here once made.",
       colTime: "Time",
       colCustomer: "Customer",
       colServiceBarber: "Service / Barber",

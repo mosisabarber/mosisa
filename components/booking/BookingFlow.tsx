@@ -10,11 +10,8 @@ import { BookingSuccess } from "@/components/booking/BookingSuccess";
 import { StepIndicator } from "@/components/booking/StepIndicator";
 import { WizardNav } from "@/components/booking/WizardNav";
 import { bookingInputSchema, ethiopianPhone } from "@/lib/booking/validation";
-import {
-  addisDateKey,
-  formatAddisDateLabel,
-  type DateLabelNames,
-} from "@/lib/booking/time";
+import { addisDateKey, formatAddisDateLabel } from "@/lib/booking/time";
+import { localeNames } from "@/lib/i18n/locale-names";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import type { Locale } from "@/lib/i18n/config";
 import { localeHref } from "@/lib/i18n/links";
@@ -25,7 +22,8 @@ export interface FlowService {
   name: string;
   description: string | null;
   durationMinutes: number;
-  price: string;
+  /** null → no price set for the service. */
+  price: string | null;
 }
 
 export interface FlowBarber {
@@ -111,19 +109,12 @@ export function BookingFlow({
   const barber = barbers.find((b) => b.id === barberId) ?? null;
 
   /**
-   * Amharic readers expect the Ethiopian calendar, so dates switch to
-   * መስከረም…ጳጉሜን with the Ethiopian year (about 7.5 years behind Gregorian).
-   * English keeps Gregorian. Slot *times* stay 24-hour either way — they are
-   * real schedule times and must not be shifted.
+   * Amharic readers expect the Ethiopian calendar *and* the Ethiopian clock:
+   * dates switch to መስከረም…ጳጉሜን with the Ethiopian year, and times to the
+   * 6:00-based 12-hour dial (09:00 → 3:00 ጠዋት). English keeps Gregorian dates
+   * and 24-hour times.
    */
-  const useEthiopianCalendar = locale === "am";
-
-  /** Localized weekday/month names for date labels (from the dictionary). */
-  const dateNames: DateLabelNames = {
-    weekdaysShort: t.days.short,
-    monthsShort: t.months.short,
-    ethiopian: useEthiopianCalendar,
-  };
+  const dateNames = localeNames(locale, t);
 
   // --- Field validation (mirrors bookingInputSchema on the client) -----------
   const [fieldErrors, setFieldErrors] = useState<{
@@ -614,9 +605,7 @@ export function BookingFlow({
                 value={selectedDate}
                 todayKey={addisDateKey(Date.now())}
                 labels={{
-                  weekdaysShort: t.days.short,
-                  monthsShort: t.months.short,
-                  ethiopian: useEthiopianCalendar,
+                  ...dateNames,
                   today: t.book.today,
                   closed: t.book.closed,
                   fullyBooked: t.book.fullyBooked,
@@ -708,6 +697,7 @@ export function BookingFlow({
                   error={availabilityError}
                   onRetry={refreshAfterRejection}
                   onSelect={setSelectedSlot}
+                  timeNames={dateNames}
                   labels={{
                     booked: t.book.slotBooked,
                     buffer: t.book.slotBuffer,
@@ -950,7 +940,7 @@ function ServiceCard({
         </span>
         <span aria-hidden="true">·</span>
         <span className="font-semibold text-brass-strong">
-          {service.price} {priceLabel}
+          {service.price ? `${service.price} ${priceLabel}` : "—"}
         </span>
       </span>
     </button>

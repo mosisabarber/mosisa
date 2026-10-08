@@ -79,7 +79,7 @@ export default async function ServicesPage({
               </div>
               <div className="flex shrink-0 items-center gap-4">
                 <p className="font-heading text-xl font-semibold text-brass-strong">
-                  {service.price} {t.common.birr}
+                  {service.price ? `${service.price} ${t.common.birr}` : "—"}
                 </p>
                 <Link href={localeHref(locale, "/book")}>
                   <Button size="sm" variant="secondary">

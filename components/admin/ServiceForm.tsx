@@ -67,7 +67,8 @@ export function ServiceForm({
         description: values.description,
         descriptionAm: values.descriptionAm,
         durationMinutes: Number(values.durationMinutes),
-        price: values.price,
+        // Blank price → null (service shows no price).
+        price: values.price.trim() === "" ? null : values.price.trim(),
         isActive: values.isActive,
       };
       const res = await submit(mode, payload, service?.id);
@@ -142,7 +143,6 @@ export function ServiceForm({
             step="0.01"
             value={values.price}
             onChange={(e) => setValues({ ...values, price: e.target.value })}
-            required
           />
           <label className="flex items-center gap-2 text-sm">
             <input

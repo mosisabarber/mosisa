@@ -45,18 +45,86 @@ export function formatAddisTime(utcMs: number): string {
 }
 
 /**
- * Names used by `formatAddisDateLabel` when the caller supplies no localized
- * set (English defaults). Keep the array lengths: 7 weekdays, 12 months.
+ * Anything that needs the *clock* rendered in the Ethiopian convention.
+ * `DateLabelNames` extends this so one object drives date and time alike.
  */
-export interface DateLabelNames {
-  weekdaysShort: readonly string[];
-  monthsShort: readonly string[];
+export interface TimeLabelOptions {
   /**
-   * Render the date in the Ethiopian (Ge'ez) calendar instead of the
-   * Gregorian one — set for Amharic. Month names then come from
-   * `ETHIOPIAN_MONTHS` and the year is the Ethiopian year.
+   * Render the Ethiopian 6:00-based 12-hour clock with Amharic day-period
+   * words instead of 24-hour Gregorian hours — set for Amharic.
    */
   ethiopian?: boolean;
+}
+
+/** Amharic day-period words, indexed by `addisPeriodIndex(hour24)`. */
+export const AMHARIC_PERIODS = ["ጠዋት", "ከሰዓት", "ምሽት", "ሌሊት"] as const;
+
+/**
+ * Ethiopian day period for an Addis 24-hour hour. The Ethiopian day runs
+ * 6:00 → 6:00: ጠዋት 6–11 · ከሰዓት 12–17 · ምሽት 18–23 · ሌሊት 0–5.
+ */
+export function addisPeriodIndex(hour24: number): number {
+  if (hour24 < 6) return 3; // ሌሊት
+  if (hour24 < 12) return 0; // ጠዋት
+  if (hour24 < 18) return 1; // ከሰዓት
+  return 2; // ምሽት
+}
+
+/**
+ * Display label for an Addis wall-clock 'HH:mm' (a trailing ':ss' from a
+ * Postgres `time` value is ignored). With `names.ethiopian` the Ethiopian
+ * clock runs 6:00 → 12, so '09:00' is '3:00 ጠዋት' and '19:00' is '1:00 ምሽት';
+ * without it the 24-hour form is returned unchanged.
+ */
+export function formatAddisTimeLabel(
+  hhmm: string,
+  names?: TimeLabelOptions
+): string {
+  const [h = 0, m = 0] = hhmm.split(":").map(Number);
+  const minutes = String(m).padStart(2, "0");
+  if (!names?.ethiopian) {
+    return `${String(h).padStart(2, "0")}:${minutes}`;
+  }
+  // Shift the 24-hour hour onto the 6:00-based 12-hour dial; 0 → 12.
+  const hour = ((h + 18) % 12) || 12;
+  const period = AMHARIC_PERIODS[addisPeriodIndex(h)] ?? "";
+  return `${hour}:${minutes} ${period}`;
+}
+
+/** `formatAddisTimeLabel` for an ISO slot, e.g. → '3:00 ጠዋት'. */
+export function formatAddisSlotLabel(
+  iso: string,
+  names?: TimeLabelOptions
+): string {
+  return formatAddisTimeLabel(formatAddisTime(Date.parse(iso)), names);
+}
+
+/** 'HH:mm[:ss]' → English 12-hour, e.g. '9:00 AM'. */
+export function formatAddisTime12h(hhmm: string): string {
+  const [h = 0, m = 0] = hhmm.split(":").map(Number);
+  const period = h < 12 ? "AM" : "PM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/** Opening-hours label: English 12-hour, Amharic Ethiopian 6:00 clock. */
+export function formatHoursLabel(
+  hhmm: string,
+  names?: TimeLabelOptions
+): string {
+  return names?.ethiopian
+    ? formatAddisTimeLabel(hhmm, names)
+    : formatAddisTime12h(hhmm);
+}
+
+/**
+ * Names used by the date and clock label helpers when the caller supplies no
+ * localized set (English defaults). Keep the array lengths: 7 weekdays,
+ * 12 months.
+ */
+export interface DateLabelNames extends TimeLabelOptions {
+  weekdaysShort: readonly string[];
+  monthsShort: readonly string[];
 }
 
 const WEEKDAY_LONG = [

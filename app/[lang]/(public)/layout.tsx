@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { NavMenu } from "@/components/NavMenu";
 import { getActiveBarbers, getWorkingHours } from "@/lib/data";
+import { formatHoursLabel } from "@/lib/booking/time";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
 import { pickLocalized } from "@/lib/i18n/content";
+import { localeNames } from "@/lib/i18n/locale-names";
 
 const DAY_NAMES = [
   "Sunday",
@@ -15,13 +17,6 @@ const DAY_NAMES = [
   "Saturday",
 ];
 
-function formatTime(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const period = h < 12 ? "AM" : "PM";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
-}
-
 export default async function PublicLayout({
   children,
   params,
@@ -32,8 +27,10 @@ export default async function PublicLayout({
   const { lang } = await params;
   const [locale, t] = await Promise.all([getLocale(lang), getDictionary(lang)]);
   const href = (path: string) => localeHref(locale, path);
-  // Day names come from the dictionary so Amharic gets እሁድ/ሰኞ… for free.
+  // Day names come from the dictionary so Amharic gets እሁድ/ሰኞ… for free; the
+  // clock follows the locale too (Amharic = Ethiopian 6:00 clock).
   const dayName = (dow: number) => t.days.long[dow] ?? DAY_NAMES[dow] ?? "";
+  const names = localeNames(locale, t);
 
   // Footer data is fetched defensively; footer degrades gracefully.
   const [barbers, hours] = await Promise.all([
@@ -103,7 +100,8 @@ export default async function PublicLayout({
                   >
                     <span>{dayName(row.dayOfWeek)}</span>
                     <span className="text-cream">
-                      {formatTime(row.startTime)} – {formatTime(row.endTime)}
+                      {formatHoursLabel(row.startTime, names)} –{" "}
+                      {formatHoursLabel(row.endTime, names)}
                     </span>
                   </li>
                 ))

@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card } from "@/components/ui";
 import {
-  formatAddisTime,
   addisDateKey,
   formatAddisDateLabel,
+  formatAddisSlotLabel,
   type DateLabelNames,
 } from "@/lib/booking/time";
 import { buildIcs, icsDataUrl } from "@/lib/notifications/calendar";
@@ -17,7 +17,8 @@ export interface BookingSuccessProps {
   barberName: string;
   serviceName: string;
   durationMinutes: number;
-  price: string;
+  /** null → no price set for the service. */
+  price: string | null;
   slotIso: string;
   customerName: string;
   customerEmail: string;
@@ -44,7 +45,7 @@ export interface BookingSuccessProps {
     minutes: string;
     birr: string;
   };
-  /** Localized weekday/month names so the date label follows the locale. */
+  /** Locale names so the date *and* the clock follow the locale. */
   dateNames?: DateLabelNames;
   /** Start the flow again from step 1. */
   onBookAnother: () => void;
@@ -133,8 +134,9 @@ export function BookingSuccess({
           <Row label={l.with} value={barberName} />
           <Row
             label={l.when}
-            value={`${formatAddisDateLabel(addisDateKey(Date.parse(slotIso)), dateNames)} · ${formatAddisTime(
-              Date.parse(slotIso)
+            value={`${formatAddisDateLabel(addisDateKey(Date.parse(slotIso)), dateNames)} · ${formatAddisSlotLabel(
+              slotIso,
+              dateNames
             )} (Harar)`}
           />
           <Row label={l.name} value={customerName} />
@@ -143,7 +145,7 @@ export function BookingSuccess({
         <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
           <span className="text-cream-muted">{l.price}</span>
           <span className="font-heading text-xl font-semibold text-brass-strong">
-            {price} {l.birr}
+            {price ? `${price} ${l.birr}` : "—"}
           </span>
         </div>
       </div>

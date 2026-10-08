@@ -8,6 +8,7 @@ import { classifyChange } from "@/lib/booking/lateness";
 import { addisDateKey, formatAddisTime } from "@/lib/booking/time";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
+import { localeNames } from "@/lib/i18n/locale-names";
 import { pickLocalized } from "@/lib/i18n/content";
 
 export async function generateMetadata({
@@ -96,6 +97,7 @@ export default async function ManagePage({ params }: Props) {
           }}
           dictionary={t}
           locale={locale}
+          names={localeNames(locale, t)}
         />
       </div>
 

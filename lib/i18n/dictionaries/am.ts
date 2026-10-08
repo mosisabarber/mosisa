@@ -405,11 +405,24 @@ const am: Dictionary = {
       amharic: "አማርኛ (አማራጭ)",
     },
 
+    ranges: {
+      label: "አሳይ",
+      today: "ዛሬ",
+      tomorrow: "ነገ",
+      dayAfter: "ከነገ ወዲያ",
+      week: "በዚህ ሳምንት",
+      all: "ሁሉም ቀጠሮዎች",
+    },
+
     dashboard: {
-      title: "የዛሬ ቀጠሮዎች",
-      allAppointments: "ሁሉም ቀጠሮዎች →",
-      emptyTitle: "ዛሬ ቀጠሮ የለም",
-      emptyBody: "የዛሬ ቀጠሮዎች እዚህ ይታያሉ።",
+      headings: {
+        today: "የዛሬ ቀጠሮዎች",
+        tomorrow: "የነገ ቀጠሮዎች",
+        dayAfter: "ከነገ ወዲያ ያሉ ቀጠሮዎች",
+        week: "የዚህ ሳምንት ቀጠሮዎች",
+      },
+      emptyTitle: "ለ{range} ቀጠሮ የለም",
+      emptyBody: "ለ{range} የሚደረጉ ቀጠሮዎች እዚህ ይታያሉ።",
       colTime: "ሰዓት",
       colCustomer: "ደንበኛ",
       colServiceBarber: "አገልግሎት / ባለሙያ",

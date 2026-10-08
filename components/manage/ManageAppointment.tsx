@@ -6,6 +6,11 @@ import { Badge, Button, Card, Modal, StateMessage } from "@/components/ui";
 import { DayStripPicker } from "@/components/booking/DayStripPicker";
 import { TimeSlotGrid } from "@/components/booking/TimeSlotGrid";
 import { LateChangeWarning } from "./LateChangeWarning";
+import {
+  formatAddisDateLabel,
+  formatAddisTimeLabel,
+  type DateLabelNames,
+} from "@/lib/booking/time";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import type { Locale } from "@/lib/i18n/config";
 import { localeHref } from "@/lib/i18n/links";
@@ -26,7 +31,7 @@ export interface ManagedAppointmentView {
     timezone: string;
   };
   barber: { id: string; name: string; slug: string };
-  service: { id: string; name: string; durationMinutes: number; price: string };
+  service: { id: string; name: string; durationMinutes: number; price: string | null };
   can_change: boolean;
   late_change: boolean;
   late_change_message: string;
@@ -37,6 +42,8 @@ export interface ManageAppointmentProps {
   appointment: ManagedAppointmentView;
   dictionary: Dictionary;
   locale: Locale;
+  /** Locale names so the date *and* the clock follow the locale. */
+  names: DateLabelNames;
 }
 
 type Mode = "view" | "reschedule";
@@ -53,14 +60,15 @@ function addisPlusDaysKey(days: number): string {
 }
 
 /**
- * Guest appointment management (Â§7 `/manage/[token]`): view, reschedule and
- * cancel. The 12-hour rule is a soft warning only â€” every action stays enabled.
+ * Guest appointment management (§7 `/manage/[token]`): view, reschedule and
+ * cancel. The 12-hour rule is a soft warning only — every action stays enabled.
  */
 export function ManageAppointment({
   token,
   appointment: initial,
   dictionary: t,
   locale,
+  names,
 }: ManageAppointmentProps) {
   const [appointment, setAppointment] = useState(initial);
   const [mode, setMode] = useState<Mode>("view");
@@ -232,10 +240,13 @@ export function ManageAppointment({
         </div>
 
         <dl className="mt-4 grid gap-2 border-t border-line pt-4 text-sm">
-          <Row label={t.manage.when} value={appointment.display.date_key} />
+          <Row
+            label={t.manage.when}
+            value={formatAddisDateLabel(appointment.display.date_key, names)}
+          />
           <Row
             label={t.manage.time}
-            value={`${appointment.display.start_time} â€“ ${appointment.display.end_time}`}
+            value={`${formatAddisTimeLabel(appointment.display.start_time, names)} – ${formatAddisTimeLabel(appointment.display.end_time, names)}`}
           />
           <Row
             label={t.manage.dur}
@@ -243,7 +254,11 @@ export function ManageAppointment({
           />
           <Row
             label={t.manage.price}
-            value={`${appointment.service.price} ${t.common.birr}`}
+            value={
+              appointment.service.price
+                ? `${appointment.service.price} ${t.common.birr}`
+                : "—"
+            }
           />
           <Row label={t.manage.customerName} value={appointment.customer_name} />
           <Row label={t.manage.customerPhone} value={appointment.customer_phone} />
@@ -329,6 +344,13 @@ export function ManageAppointment({
                 }}
                 disabled={loadingSlots}
                 todayKey={addisTodayKey()}
+                labels={{
+                  ...names,
+                  today: t.book.today,
+                  closed: t.book.closed,
+                  fullyBooked: t.book.fullyBooked,
+                  ariaLabel: t.book.chooseDateAria,
+                }}
               />
             )}
           </div>
@@ -343,6 +365,21 @@ export function ManageAppointment({
                 loading={loadingSlots}
                 error={slotsError}
                 onRetry={loadAvailability}
+                timeNames={names}
+                labels={{
+                  booked: t.book.slotBooked,
+                  buffer: t.book.slotBuffer,
+                  legendTaken: t.book.legendTaken,
+                  legendBookedBuffer: t.book.legendBookedBuffer,
+                  emptyTitle: t.book.pickDateTitle,
+                  emptyBody: t.book.pickDateBody,
+                  errorTitle: t.manage.loadTimesFailed,
+                  retry: t.common.tryAgain,
+                  soldOutTitle: t.book.fullyBooked,
+                  soldOutBody: t.book.noSlotsBody,
+                  selectedAria: t.book.slotSelected,
+                  availableAria: t.book.slotAvailable,
+                }}
               />
             </div>
           )}
@@ -375,8 +412,8 @@ export function ManageAppointment({
           {formatTemplate(t.manage.summaryLine, {
             service: appointment.service.name,
             barber: appointment.barber.name,
-            date: appointment.display.date_key,
-            time: appointment.display.start_time,
+            date: formatAddisDateLabel(appointment.display.date_key, names),
+            time: formatAddisTimeLabel(appointment.display.start_time, names),
           })}
         </p>
 

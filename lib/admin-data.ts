@@ -13,6 +13,10 @@ import {
   blockedTimes,
 } from "@/db/schema";
 import type { InferSelectModel } from "drizzle-orm";
+import {
+  appointmentRangeBounds,
+  type AppointmentRange,
+} from "@/lib/admin-ranges";
 
 export type Barber = InferSelectModel<typeof barbers>;
 export type Service = InferSelectModel<typeof services>;
@@ -170,15 +174,16 @@ export async function getAppointments(opts: {
   );
 }
 
-export function getTodaysAppointments(): Promise<AppointmentList[]> {
-  return safe(async () => {
-    const now = new Date();
-    const dayStart = new Date(now);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-    return getAppointments({ dateFrom: dayStart.toISOString(), dateTo: dayEnd.toISOString() });
-  }, []);
+/**
+ * Appointments for a staff range (today / tomorrow / day after / this week),
+ * bounded on Addis midnight rather than UTC: Ethiopia is UTC+3, so a UTC day
+ * would start at 03:00 local and show the wrong bookings.
+ */
+export function getAppointmentsForRange(
+  range: AppointmentRange
+): Promise<AppointmentList[]> {
+  const { fromIso, toIso } = appointmentRangeBounds(range);
+  return getAppointments({ dateFrom: fromIso, dateTo: toIso });
 }
 
 export function getAppointmentById(id: string): Promise<Appointment | null> {

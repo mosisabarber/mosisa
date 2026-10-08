@@ -32,7 +32,8 @@ export interface ManagedAppointment {
     name: string;
     nameAm: string | null;
     durationMinutes: number;
-    price: string;
+    /** null → the service has no price set. */
+    price: string | null;
   };
 }
 

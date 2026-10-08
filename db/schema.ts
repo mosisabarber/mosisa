@@ -42,7 +42,8 @@ export const services = pgTable("services", {
   description: text("description"),
   descriptionAm: text("description_am"),
   durationMinutes: integer("duration_minutes").notNull(),
-  price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  /** Nullable — admin may leave a service unpriced (shown as "—"). */
+  price: numeric("price", { precision: 10, scale: 2 }),
   isActive: boolean("is_active").notNull().default(true),
 });
 

@@ -7,19 +7,14 @@ import {
   getWorkingHours,
 } from "@/lib/data";
 import { BUSINESS, getSiteUrl } from "@/lib/seo";
+import { formatHoursLabel } from "@/lib/booking/time";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
 import { pickLocalized } from "@/lib/i18n/content";
+import { localeNames } from "@/lib/i18n/locale-names";
 import { formatTemplate } from "@/lib/i18n/format";
 
 export const revalidate = 60;
-
-function formatTime(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const period = h < 12 ? "AM" : "PM";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
-}
 
 /** Schema.org HairSalon — rich-result facts for the homepage (spec §14). */
 function hairSalonJsonLd(openingHours: { dayOfWeek: number; startTime: string; endTime: string }[]) {
@@ -66,6 +61,8 @@ export default async function HomePage({ params }: Props) {
     getLocale(lang),
   ]);
   const href = (path: string) => localeHref(locale, path);
+  // Amharic renders the Ethiopian 6:00 clock (9:00 AM → 3:00 ጠዋት).
+  const names = localeNames(locale, t);
 
   return (
     <main>
@@ -141,7 +138,7 @@ export default async function HomePage({ params }: Props) {
                   </p>
                 </div>
                 <p className="font-heading text-lg font-semibold text-brass-strong">
-                  {service.price} {t.common.birr}
+                  {service.price ? `${service.price} ${t.common.birr}` : "—"}
                 </p>
               </Card>
             ))
@@ -201,11 +198,11 @@ export default async function HomePage({ params }: Props) {
                   {t.days.short[row.dayOfWeek]}
                 </p>
                 <p className="mt-1 text-sm text-cream">
-                  {formatTime(row.startTime)}
+                  {formatHoursLabel(row.startTime, names)}
                 </p>
                 <p className="text-sm text-cream-muted">
                   {formatTemplate(t.home.hoursUntil, {
-                    time: formatTime(row.endTime),
+                    time: formatHoursLabel(row.endTime, names),
                   })}
                 </p>
               </Card>

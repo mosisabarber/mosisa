@@ -1,6 +1,10 @@
 "use client";
 
-import { formatAddisTime } from "@/lib/booking/time";
+import {
+  formatAddisSlotLabel,
+  formatAddisTimeLabel,
+  type TimeLabelOptions,
+} from "@/lib/booking/time";
 import { cn } from "@/lib/cn";
 import { Button, StateMessage } from "@/components/ui";
 
@@ -24,6 +28,8 @@ export interface TimeSlotGridProps {
   onRetry?: () => void;
   /** Localized labels — the booking flow passes the active dictionary's set. */
   labels?: Partial<TimeSlotLabels>;
+  /** Locale names: `ethiopian` renders the Amharic 6:00 clock (3:00 ጠዋት). */
+  timeNames?: TimeLabelOptions;
 }
 
 export interface TimeSlotLabels {
@@ -77,8 +83,10 @@ export function TimeSlotGrid({
   error = null,
   onRetry,
   labels,
+  timeNames,
 }: TimeSlotGridProps) {
   const l = { ...DEFAULT_LABELS, ...labels };
+  const timeLabel = (hhmm: string) => formatAddisTimeLabel(hhmm, timeNames);
   if (!dateKey) {
     return (
       <StateMessage
@@ -146,7 +154,7 @@ export function TimeSlotGrid({
               type="button"
               disabled
               aria-disabled="true"
-              aria-label={`${time} — ${label.toLowerCase()}`}
+              aria-label={`${timeLabel(time)} — ${label.toLowerCase()}`}
               title={label}
               className={cn(
                 "flex min-h-11 flex-col items-center justify-center rounded-md border px-1 py-2 text-sm font-medium tabular-nums",
@@ -154,7 +162,7 @@ export function TimeSlotGrid({
               )}
             >
               <span className="line-through decoration-cream-muted/50">
-                {time}
+                {timeLabel(time)}
               </span>
               {/* Reason sits under the time so it reads at a glance, rather
                   than hiding in a tooltip. */}
@@ -171,7 +179,7 @@ export function TimeSlotGrid({
             key={time}
             type="button"
             aria-pressed={isSelected}
-            aria-label={`${time} ${isSelected ? l.selectedAria : l.availableAria}`}
+            aria-label={`${timeLabel(time)} ${isSelected ? l.selectedAria : l.availableAria}`}
             onClick={() => onSelect(slotIso)}
             className={cn(
               "flex min-h-11 flex-col items-center justify-center rounded-md border px-1 py-2 text-sm font-medium tabular-nums transition-colors",
@@ -180,7 +188,7 @@ export function TimeSlotGrid({
                 : "border-line bg-surface text-cream hover:border-brass/50 hover:text-brass-strong"
             )}
           >
-            <span>{formatAddisTime(Date.parse(slotIso))}</span>
+            <span>{formatAddisSlotLabel(slotIso, timeNames)}</span>
             {/* Reserve the same label row so free and taken cells keep an
                 identical height and the grid rows do not go ragged. */}
             <span

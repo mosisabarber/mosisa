@@ -5,25 +5,46 @@
 import { Suspense } from "react";
 import { getBlockedTimes, getActiveBarbers } from "@/lib/admin-data";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
-import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
+import { getAdminDictionary, getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
+import { localeNames } from "@/lib/i18n/locale-names";
+import {
+  ADDIS_OFFSET_MS,
+  formatAddisDateLabel,
+  formatAddisTimeLabel,
+  type DateLabelNames,
+} from "@/lib/booking/time";
 import { pickLocalized } from "@/lib/i18n/content";
 import { Badge, Card, StateMessage } from "@/components/ui";
 
-function formatDt(d: Date): string {
-  const iso = new Date(d.getTime() + 3 * 3600 * 1000).toISOString();
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} (UTC+3)`;
+/** Addis wall-clock parts for a stored instant (Ethiopia is UTC+3 year-round). */
+function dtParts(d: Date): { dateKey: string; time: string } {
+  const iso = new Date(d.getTime() + ADDIS_OFFSET_MS).toISOString();
+  return { dateKey: iso.slice(0, 10), time: iso.slice(11, 16) };
+}
+
+/**
+ * Full stamp for the table. English keeps the compact staff triage format;
+ * Amharic renders the Ethiopian calendar and the 6:00 clock, which already read
+ * as local time — so the UTC+3 note is dropped.
+ */
+function formatDt(d: Date, names: DateLabelNames): string {
+  const { dateKey, time } = dtParts(d);
+  return names.ethiopian
+    ? `${formatAddisDateLabel(dateKey, names)} ${formatAddisTimeLabel(time, names)}`
+    : `${dateKey} ${time} (UTC+3)`;
 }
 
 /**
  * Compact Addis Ababa date + time for the phone card layout — "YYYY-MM-DD" and
  * "HH:mm" separately, so each fits a card line without wrapping.
  */
-function dtDate(d: Date): string {
-  return new Date(d.getTime() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+function dtDate(d: Date, names: DateLabelNames): string {
+  const { dateKey } = dtParts(d);
+  return names.ethiopian ? formatAddisDateLabel(dateKey, names) : dateKey;
 }
 
-function dtTime(d: Date): string {
-  return new Date(d.getTime() + 3 * 3600 * 1000).toISOString().slice(11, 16);
+function dtTime(d: Date, names: DateLabelNames): string {
+  return formatAddisTimeLabel(dtParts(d).time, names);
 }
 
 export default async function AdminBlockedTimesPage({
@@ -32,8 +53,12 @@ export default async function AdminBlockedTimesPage({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const t = await getAdminDictionary(lang);
+  const [t, dict] = await Promise.all([
+    getAdminDictionary(lang),
+    getDictionary(lang),
+  ]);
   const locale = getLocale(lang);
+  const names = localeNames(locale, dict);
   await requireAdmin(lang);
   const [blocks, barbers] = await Promise.all([getBlockedTimes(), getActiveBarbers()]);
 
@@ -85,7 +110,7 @@ export default async function AdminBlockedTimesPage({
       </form>
 
       <Suspense fallback={<StateMessage state="loading" />}>
-        <BlockedTimesTable blocks={blocks} t={t} />
+        <BlockedTimesTable blocks={blocks} t={t} names={names} />
       </Suspense>
     </section>
   );
@@ -94,9 +119,11 @@ export default async function AdminBlockedTimesPage({
 function BlockedTimesTable({
   blocks,
   t,
+  names,
 }: {
   blocks: Awaited<ReturnType<typeof getBlockedTimes>>;
   t: Awaited<ReturnType<typeof getAdminDictionary>>;
+  names: DateLabelNames;
 }) {
   if (blocks.length === 0) {
     return <StateMessage state="empty" title={t.blocked.empty} />;
@@ -126,8 +153,8 @@ function BlockedTimesTable({
           <tbody>
             {blocks.map((b) => (
               <tr key={b.id} className="border-t border-line">
-                <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.startDatetime)}</td>
-                <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.endDatetime)}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.startDatetime, names)}</td>
+                <td className="px-4 py-2.5 whitespace-nowrap">{formatDt(b.endDatetime, names)}</td>
                 <td className="px-4 py-2.5">{b.reason ?? "—"}</td>
                 <td className="px-4 py-2.5">
                   {b.barberId ? `#${b.barberId.slice(0, 8)}` : t.blocked.shopWide}
@@ -154,17 +181,17 @@ function BlockedTimesTable({
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
               <dt className="text-cream-muted">{t.blocked.start}</dt>
               <dd className="text-right text-cream">
-                {dtDate(b.startDatetime)}
+                {dtDate(b.startDatetime, names)}
                 <span className="block text-xs text-cream-muted">
-                  {dtTime(b.startDatetime)}
+                  {dtTime(b.startDatetime, names)}
                 </span>
               </dd>
 
               <dt className="text-cream-muted">{t.blocked.end}</dt>
               <dd className="text-right text-cream">
-                {dtDate(b.endDatetime)}
+                {dtDate(b.endDatetime, names)}
                 <span className="block text-xs text-cream-muted">
-                  {dtTime(b.endDatetime)}
+                  {dtTime(b.endDatetime, names)}
                 </span>
               </dd>
             </dl>

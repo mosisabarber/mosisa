@@ -4,9 +4,21 @@
 import { Suspense } from "react";
 import { getAppointments } from "@/lib/admin-data";
 import type { AppointmentList } from "@/lib/admin-data";
+import {
+  appointmentRangeBounds,
+  parseAppointmentRange,
+} from "@/lib/admin-ranges";
 import { requireAdmin } from "@/components/admin/AdminPageGate";
 import { NameCell } from "@/components/admin/NameCell";
-import { getAdminDictionary, getLocale } from "@/lib/i18n/get-dictionary";
+import { RangeSelect } from "@/components/admin/RangeSelect";
+import { getAdminDictionary, getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
+import { localeNames } from "@/lib/i18n/locale-names";
+import {
+  ADDIS_OFFSET_MS,
+  formatAddisDateLabel,
+  formatAddisTimeLabel,
+  type DateLabelNames,
+} from "@/lib/booking/time";
 import type { Locale } from "@/lib/i18n/config";
 import { Badge, Card, StateMessage } from "@/components/ui";
 
@@ -18,9 +30,22 @@ const STATUS_TONE: Record<string, "brass" | "forest" | "navy" | "warning" | "err
     no_show: "warning",
   };
 
-function formatAddis(date: Date): string {
-  const iso = new Date(date.getTime() + 3 * 3600 * 1000).toISOString();
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} (UTC+3)`;
+/** Addis wall-clock parts for a stored instant (Ethiopia is UTC+3 year-round). */
+function addisParts(date: Date): { dateKey: string; time: string } {
+  const iso = new Date(date.getTime() + ADDIS_OFFSET_MS).toISOString();
+  return { dateKey: iso.slice(0, 10), time: iso.slice(11, 16) };
+}
+
+/**
+ * Full stamp for the table. English keeps the compact staff triage format;
+ * Amharic renders the Ethiopian calendar and the 6:00 clock, which already read
+ * as local time — so the UTC+3 note is dropped.
+ */
+function formatAddis(date: Date, names: DateLabelNames): string {
+  const { dateKey, time } = addisParts(date);
+  return names.ethiopian
+    ? `${formatAddisDateLabel(dateKey, names)} ${formatAddisTimeLabel(time, names)}`
+    : `${dateKey} ${time} (UTC+3)`;
 }
 
 /**
@@ -28,12 +53,13 @@ function formatAddis(date: Date): string {
  * "YYYY-MM-DD HH:mm (UTC+3)" string is too long to sit on one card line, so
  * cards show the date once and the start–end times beneath it.
  */
-function addisDate(date: Date): string {
-  return new Date(date.getTime() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+function addisDate(date: Date, names: DateLabelNames): string {
+  const { dateKey } = addisParts(date);
+  return names.ethiopian ? formatAddisDateLabel(dateKey, names) : dateKey;
 }
 
-function addisTime(date: Date): string {
-  return new Date(date.getTime() + 3 * 3600 * 1000).toISOString().slice(11, 16);
+function addisTime(date: Date, names: DateLabelNames): string {
+  return formatAddisTimeLabel(addisParts(date).time, names);
 }
 
 export const dynamic = "force-dynamic";
@@ -44,19 +70,36 @@ export default async function AdminAppointmentsPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ status?: string; search?: string; dateFrom?: string; dateTo?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    range?: string;
+  }>;
 }) {
   const { lang } = await params;
-  const t = await getAdminDictionary(lang);
+  const [t, dict] = await Promise.all([
+    getAdminDictionary(lang),
+    getDictionary(lang),
+  ]);
   const locale = getLocale(lang);
+  const names = localeNames(locale, dict);
+  // The Ethiopian clock reads as local time on its own; only English keeps the
+  // UTC+3 note.
+  const zoneNote = names.ethiopian ? "" : " (UTC+3)";
   await requireAdmin(lang);
   const sp = await searchParams;
   const status = sp.status as "confirmed" | "cancelled" | "completed" | "no_show" | undefined;
+  // A picked range wins over the manual date inputs; submitting the filter form
+  // below sends an empty `range` to clear it.
+  const range = parseAppointmentRange(sp.range);
+  const bounds = range ? appointmentRangeBounds(range) : null;
   const appointments = await getAppointments({
     status,
     search: sp.search,
-    dateFrom: sp.dateFrom,
-    dateTo: sp.dateTo,
+    dateFrom: bounds?.fromIso ?? sp.dateFrom,
+    dateTo: bounds?.toIso ?? sp.dateTo,
   });
 
   const showStatus = (s: string) =>
@@ -73,9 +116,17 @@ export default async function AdminAppointmentsPage({
         <h1 className="font-heading text-xl font-semibold text-cream sm:text-2xl">
           {t.appointments.title}
         </h1>
+        <RangeSelect
+          value={range ?? "all"}
+          t={t.ranges}
+          basePath="/admin/appointments"
+          preserve={{ status: sp.status, search: sp.search }}
+        />
       </div>
 
       <form className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:gap-4">
+        {/* Clears any picked range so the manual filters apply on their own. */}
+        <input type="hidden" name="range" value="" />
         <input
           type="text"
           name="search"
@@ -104,7 +155,13 @@ export default async function AdminAppointmentsPage({
       </form>
 
       <Suspense fallback={<StateMessage state="loading" />}>
-        <AppointmentsTable appointments={appointments} t={t} locale={locale} />
+        <AppointmentsTable
+          appointments={appointments}
+          t={t}
+          locale={locale}
+          names={names}
+          zoneNote={zoneNote}
+        />
       </Suspense>
     </section>
   );
@@ -114,10 +171,15 @@ async function AppointmentsTable({
   appointments,
   t,
   locale,
+  names,
+  zoneNote,
 }: {
   appointments: AppointmentList[];
   t: Awaited<ReturnType<typeof getAdminDictionary>>;
   locale: Locale;
+  names: DateLabelNames;
+  /** " (UTC+3)" for English, empty for Amharic (the Ethiopian clock is local). */
+  zoneNote: string;
 }) {
   if (appointments.length === 0) {
     return <StateMessage state="empty" title={t.appointments.empty} />;
@@ -162,8 +224,8 @@ async function AppointmentsTable({
                 className="border-t border-line odd:bg-charcoal even:bg-surface/30"
               >
                 <td className="px-4 py-2.5 whitespace-nowrap">
-                  {formatAddis(a.startDatetime)} →{" "}
-                  {formatAddis(a.endDatetime)}
+                  {formatAddis(a.startDatetime, names)} →{" "}
+                  {formatAddis(a.endDatetime, names)}
                 </td>
                 <td className="px-4 py-2.5">
                   {a.customerName}
@@ -195,11 +257,12 @@ async function AppointmentsTable({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <span className="block text-sm font-medium text-cream">
-                  {addisDate(a.startDatetime)}
+                  {addisDate(a.startDatetime, names)}
                 </span>
                 <span className="text-xs text-cream-muted">
-                  {addisTime(a.startDatetime)} → {addisTime(a.endDatetime)}{" "}
-                  (UTC+3)
+                  {addisTime(a.startDatetime, names)} →{" "}
+                  {addisTime(a.endDatetime, names)}
+                  {zoneNote}
                 </span>
               </div>
               <Badge tone={STATUS_TONE[a.status] ?? "neutral"}>

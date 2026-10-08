@@ -49,6 +49,7 @@ export async function POST(request: Request) {
   const descriptionAm =
     typeof body.descriptionAm === "string" ? body.descriptionAm.trim() : "";
   const durationMinutes = Number(body.durationMinutes);
+  // Price is optional: blank / null / undefined → NULL (no price shown).
   const price = body.price;
   const isActive = body.isActive !== false;
 
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
         description: description || null,
         descriptionAm: descriptionAm || null,
         durationMinutes,
-        price: typeof price === "string" ? price : String(price ?? 0),
+        price: normalizePrice(price),
         isActive,
       })
       .returning();
@@ -87,6 +88,17 @@ export async function POST(request: Request) {
     console.error("[admin services] POST failed:", err);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
+}
+
+/**
+ * Coerce an incoming price to the stored shape: a numeric string as-is, or
+ * null when it is absent / blank / explicitly null (column is nullable).
+ */
+function normalizePrice(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : null;
+  if (typeof value === "string") return value.trim() === "" ? null : value.trim();
+  return null;
 }
 
 export async function PATCH(request: Request) {
@@ -113,8 +125,13 @@ export async function PATCH(request: Request) {
   if (typeof body.nameAm === "string" || body.nameAm === null)
     patch.nameAm = typeof body.nameAm === "string" ? body.nameAm.trim() || null : null;
   if (typeof body.durationMinutes === "number") patch.durationMinutes = body.durationMinutes;
-  if (typeof body.price === "string" || typeof body.price === "number")
-    patch.price = body.price;
+  // Explicit null clears the price; a string/number sets it ("" → null).
+  if (
+    typeof body.price === "string" ||
+    typeof body.price === "number" ||
+    body.price === null
+  )
+    patch.price = normalizePrice(body.price);
   if (typeof body.isActive === "boolean") patch.isActive = body.isActive;
   if (typeof body.description === "string")
     patch.description = body.description.trim() || null;

@@ -68,7 +68,9 @@ export default async function AdminServicesPage({
                     <td className="px-4 py-2.5">
                       {s.durationMinutes} {t.common.min}
                     </td>
-                    <td className="px-4 py-2.5">{Number(s.price).toFixed(2)}</td>
+                    <td className="px-4 py-2.5">
+                      {s.price ? Number(s.price).toFixed(2) : "—"}
+                    </td>
                     <td className="px-4 py-2.5">
                       {s.isActive ? t.common.yes : t.common.no}
                     </td>
@@ -102,7 +104,7 @@ export default async function AdminServicesPage({
 
                   <dt className="text-cream-muted">{t.services.colPrice}</dt>
                   <dd className="text-right text-cream">
-                    {Number(s.price).toFixed(2)} {t.common.etb}
+                    {s.price ? `${Number(s.price).toFixed(2)} ${t.common.etb}` : "—"}
                   </dd>
                 </dl>
 
