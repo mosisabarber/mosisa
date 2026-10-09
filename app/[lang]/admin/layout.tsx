@@ -14,6 +14,7 @@ import Link from "next/link";
 import { SignOutButton } from "@/components/admin/SignOutButton";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { getDictionary, getLocale } from "@/lib/i18n/get-dictionary";
 import { localeHref } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
@@ -57,6 +58,7 @@ export default async function AdminLayout({
           </Link>
           <div className="flex shrink-0 items-center gap-4">
             <LanguageSwitcher t={t} />
+            <ThemeToggle label={t.nav.theme} />
             <SignOutButton t={t.admin} />
           </div>
         </div>

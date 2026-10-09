@@ -109,8 +109,12 @@ export default async function PublicLayout({
             </ul>
           </div>
         </div>
-        <div className="border-t border-line py-4 text-center text-xs text-cream-muted">
-          © {new Date().getFullYear()} {t.meta.siteName} — {t.common.allRightsReserved}
+        <div className="border-t border-line py-4 text-center text-xs leading-5 text-cream-muted">
+          <p>
+            © {new Date().getFullYear()} {t.meta.siteName} —{" "}
+            {t.common.allRightsReserved}
+          </p>
+          <p className="mt-1">Designed &amp; Developed by Mejid</p>
         </div>
       </footer>
     </>
