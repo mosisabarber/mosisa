@@ -188,9 +188,11 @@ export function BookingSuccess({
         </a>
       </div>
 
-      <p className="sr-only">
-        {l.email}: {customerEmail}
-      </p>
+      {customerEmail && (
+        <p className="sr-only">
+          {l.email}: {customerEmail}
+        </p>
+      )}
     </Card>
   );
 }

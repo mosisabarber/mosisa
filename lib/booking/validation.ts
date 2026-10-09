@@ -29,7 +29,17 @@ export const bookingInputSchema = z.object({
   start_datetime: isoDatetime,
   customer_name: z.string().trim().min(2, "Name is too short").max(80),
   customer_phone: ethiopianPhone,
-  customer_email: z.string().trim().toLowerCase().email().max(120),
+  // Email is optional (the label says so) — empty string is accepted as-is;
+  // a value that *is* given must still be a valid address.
+  customer_email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(120)
+    .refine(
+      (v) => v === "" || z.string().email().max(120).safeParse(v).success,
+      { message: "Enter a valid email address" }
+    ),
 });
 
 export type BookingInput = z.infer<typeof bookingInputSchema>;

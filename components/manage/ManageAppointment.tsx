@@ -21,7 +21,8 @@ export interface ManagedAppointmentView {
   status: string;
   customer_name: string;
   customer_phone: string;
-  customer_email: string;
+  /** null/empty → no email given at booking. */
+  customer_email: string | null;
   start_datetime: string;
   end_datetime: string;
   display: {
@@ -262,7 +263,10 @@ export function ManageAppointment({
           />
           <Row label={t.manage.customerName} value={appointment.customer_name} />
           <Row label={t.manage.customerPhone} value={appointment.customer_phone} />
-          <Row label={t.manage.customerEmail} value={appointment.customer_email} />
+          <Row
+            label={t.manage.customerEmail}
+            value={appointment.customer_email || "—"}
+          />
         </dl>
 
         <p className="mt-3 text-xs text-cream-muted">

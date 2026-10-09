@@ -114,7 +114,8 @@ export async function POST(request: Request) {
         serviceId: service.id,
         customerName: input.customer_name,
         customerPhone: input.customer_phone,
-        customerEmail: input.customer_email,
+        // Email is optional — store NULL rather than an empty string.
+        customerEmail: input.customer_email || null,
         startDatetime,
         endDatetime,
         status: "confirmed",
@@ -157,18 +158,21 @@ export async function POST(request: Request) {
     location: "Mosisa Barber Shop, Harar",
     });
 
-  const emailResult = await sendEmail(
-    input.customer_email,
-    `Your booking - ${service.name} with ${barber.name}`,
-    `<p>Hi ${input.customer_name},</p>
+  // Email is optional — only attempt delivery when an address was given.
+  if (input.customer_email) {
+    const emailResult = await sendEmail(
+      input.customer_email,
+      `Your booking - ${service.name} with ${barber.name}`,
+      `<p>Hi ${input.customer_name},</p>
      <p>Your appointment is confirmed:</p>
      <p><strong>${service.name}</strong> with ${barber.name}<br/>
      ${startKey} at ${startTime}-${endTime} (Harar)</p>
      <p><a href="${manageUrl}">Manage your appointment</a> (view, reschedule, cancel)</p>
      <p><a href="data:text/calendar;base64,${Buffer.from(ics).toString("base64")}">Add to calendar (.ics)</a></p>`
-  );
-  if (!emailResult.success) {
-    console.error("[booking] email notification failed:", emailResult.error);
+    );
+    if (!emailResult.success) {
+      console.error("[booking] email notification failed:", emailResult.error);
+    }
   }
 
   const smsResult = await sendSMS(

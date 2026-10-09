@@ -183,16 +183,19 @@ export async function PATCH(
   const newDateKey = addisDateKey(startMs);
   const newStartTime = formatAddisTime(startMs);
 
-  const emailResult = await sendEmail(
-    appointment.customerEmail,
-    `Rescheduled - ${service.name} with ${appointment.barber.name}`,
-    `<p>Hi ${appointment.customerName},</p>
+  // Email is optional — skip delivery when no address was given at booking.
+  if (appointment.customerEmail) {
+    const emailResult = await sendEmail(
+      appointment.customerEmail,
+      `Rescheduled - ${service.name} with ${appointment.barber.name}`,
+      `<p>Hi ${appointment.customerName},</p>
      <p>Your appointment has been moved to:</p>
      <p><strong>${newDateKey} at ${newStartTime}</strong> (Harar) with ${appointment.barber.name}</p>
      <p><a href="${manageUrl}">Manage your appointment</a></p>`
-  );
-  if (!emailResult.success) {
-    console.error("[manage] email notification failed:", emailResult.error);
+    );
+    if (!emailResult.success) {
+      console.error("[manage] email notification failed:", emailResult.error);
+    }
   }
 
   const smsResult = await sendSMS(
@@ -259,19 +262,21 @@ export async function DELETE(
   const startTime = formatAddisTime(appointment.startDatetime.getTime());
   const change = classifyChange(appointment.startDatetime);
 
-        const emailResult = await sendEmail(
-    appointment.customerEmail,
-    `Cancelled - ${appointment.service.name}`,
-    `<p>Hi ${appointment.customerName},</p>
+        // Email is optional — skip delivery when no address was given.
+        if (appointment.customerEmail) {
+          const emailResult = await sendEmail(            appointment.customerEmail,
+            `Cancelled - ${appointment.service.name}`,
+            `<p>Hi ${appointment.customerName},</p>
      <p>Your appointment on <strong>${dateKey} at ${startTime}</strong> with ${appointment.barber.name} has been cancelled.</p>
      ${change.isLate
        ? "<p>This was a late cancellation (inside 12 hours). Thanks for letting us know.</p>"
        : ""}
      <p>Book again any time: <a href="${siteUrl}/book">${siteUrl}/book</a></p>`
-  );
-  if (!emailResult.success) {
-    console.error("[manage] email notification failed:", emailResult.error);
-  }
+          );
+          if (!emailResult.success) {
+            console.error("[manage] email notification failed:", emailResult.error);
+          }
+        }
 
   const smsResult = await sendSMS(
     appointment.customerPhone,

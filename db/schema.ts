@@ -94,7 +94,8 @@ export const appointments = pgTable("appointments", {
     .references(() => services.id),
   customerName: text("customer_name").notNull(),
   customerPhone: text("customer_phone").notNull(),
-  customerEmail: text("customer_email").notNull(),
+  /** Nullable — email is optional at booking (SMS is the primary channel). */
+  customerEmail: text("customer_email"),
   startDatetime: timestamp("start_datetime", {
     withTimezone: true,
     mode: "date",

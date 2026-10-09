@@ -18,7 +18,8 @@ export interface ManagedAppointment {
   endDatetime: Date;
   customerName: string;
   customerPhone: string;
-  customerEmail: string;
+  /** null → no email given at booking. */
+  customerEmail: string | null;
   createdAt: Date;
   barber: {
     id: string;

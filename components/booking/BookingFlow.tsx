@@ -141,9 +141,11 @@ export function BookingFlow({
     }
 
     const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      errors.email = t.book.errors.emailRequired;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail.toLowerCase())) {
+    // Email is optional — only check the format when something is entered.
+    if (
+      trimmedEmail &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail.toLowerCase())
+    ) {
       errors.email = t.book.errors.emailInvalid;
     }
 
@@ -784,6 +786,9 @@ export function BookingFlow({
                 autoComplete="email"
                 className="sm:col-span-2"
               />
+              <p className="-mt-1 text-xs leading-5 text-cream-muted sm:col-span-2">
+                {t.book.emailHint}
+              </p>
             </div>
             <p className="mt-3 text-xs leading-5 text-cream-muted">
               {t.book.detailsPrivacy}
