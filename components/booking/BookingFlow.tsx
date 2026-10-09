@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Card, Input, StateMessage } from "@/components/ui";
 import { DayStripPicker } from "@/components/booking/DayStripPicker";
 import { TimeSlotGrid } from "@/components/booking/TimeSlotGrid";
@@ -11,6 +17,7 @@ import { StepIndicator } from "@/components/booking/StepIndicator";
 import { WizardNav } from "@/components/booking/WizardNav";
 import { bookingInputSchema, ethiopianPhone } from "@/lib/booking/validation";
 import { addisDateKey, formatAddisDateLabel } from "@/lib/booking/time";
+import { clearDraft, readDraft, writeDraft } from "@/lib/booking/draft";
 import { localeNames } from "@/lib/i18n/locale-names";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import type { Locale } from "@/lib/i18n/config";
@@ -58,29 +65,102 @@ function dateKeyFromMs(ms: number): string {
   return new Date(ms + 3 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-export function BookingFlow({
+/**
+ * Snapshots for `useSyncExternalStore`: false during SSR and hydration — so
+ * the first client render matches the prerendered HTML — and true from then
+ * on, never flipping back.
+ */
+const subscribeSilent = () => () => undefined;
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+export function BookingFlow(props: Props) {
+  // The wizard may resume a saved draft on mount, but never while React is
+  // still hydrating: restored state would differ from the prerendered page and
+  // trigger a hydration error. Swapping the key remounts it at exactly that
+  // point — and because `live` never returns to false, mid-session state such
+  // as the success screen is never remounted away afterwards.
+  const live = useSyncExternalStore(
+    subscribeSilent,
+    getClientSnapshot,
+    getServerSnapshot
+  );
+
+  return <BookingWizard key={live ? "live" : "ssr"} live={live} {...props} />;
+}
+
+function BookingWizard({
   services,
   barbers,
   initialBarberSlug,
   dictionary: t,
   locale,
-}: Props) {
+  live,
+}: Props & { live: boolean }) {
   const preselectedBarber = useMemo(
     () => barbers.find((b) => b.slug === initialBarberSlug) ?? null,
     [barbers, initialBarberSlug]
   );
 
-  const [serviceId, setServiceId] = useState<string | null>(null);
-  const [barberId, setBarberId] = useState<string | null>(
-    preselectedBarber?.id ?? null
-  );
+  // --- Resume a saved draft (language switch / reload / Back) ----------------
+  // Only the client-owned instance reads sessionStorage — while `live` is
+  // false the wizard renders exactly the prerendered defaults (see
+  // BookingFlow above).
+  const [draft] = useState(() => (live ? readDraft() : null));
+
+  // Restore only what still holds up against what this page actually offers:
+  // a service or barber that has since been deleted, or a day that has fallen
+  // outside the booking horizon, is dropped instead of resurrected.
+  const initialServiceId =
+    draft && services.some((s) => s.id === draft.serviceId)
+      ? draft.serviceId
+      : null;
+  const initialBarberId =
+    draft && barbers.some((b) => b.id === draft.barberId)
+      ? draft.barberId
+      : (preselectedBarber?.id ?? null);
+  const initialDate = draft?.selectedDate ?? null;
+  const initialSlot = draft?.selectedSlot ?? null;
+
+  /** Furthest step the restored selections can satisfy — mirrors
+      canContinueFrom so a gap in the draft cannot strand the customer. */
+  function restoredMaxStep(): number {
+    let max: number = STEP.SERVICE;
+    if (!initialServiceId) return max;
+    max = STEP.BARBER;
+    if (!initialBarberId) return max;
+    max = STEP.DATE;
+    if (!initialDate) return max;
+    max = STEP.TIME;
+    if (!initialSlot) return max;
+    const detailsOk =
+      Object.keys(
+        validateDetails({
+          name: draft?.name ?? "",
+          phone: draft?.phone ?? "",
+          email: draft?.email ?? "",
+        })
+      ).length === 0;
+    return detailsOk ? STEP.CONFIRM : STEP.DETAILS;
+  }
+
+  const [serviceId, setServiceId] = useState<string | null>(initialServiceId);
+  const [barberId, setBarberId] = useState<string | null>(initialBarberId);
 
   // --- Wizard navigation -----------------------------------------------------
-  const [step, setStep] = useState<number>(STEP.SERVICE);
-  const [furthestStep, setFurthestStep] = useState<number>(STEP.SERVICE);
+  const [step, setStep] = useState<number>(() =>
+    draft ? Math.min(draft.step, restoredMaxStep()) : STEP.SERVICE
+  );
+  const [furthestStep, setFurthestStep] = useState<number>(() =>
+    draft
+      ? Math.min(Math.max(step, draft.furthestStep), restoredMaxStep())
+      : STEP.SERVICE
+  );
   const topRef = useRef<HTMLDivElement | null>(null);
 
-  const [windowStartMs, setWindowStartMs] = useState<number | null>(null);
+  const [windowStartMs, setWindowStartMs] = useState<number | null>(
+    draft?.windowStartMs ?? null
+  );
   const [slotsByDate, setSlotsByDate] = useState<Record<string, string[]>>({});
   const [takenByDate, setTakenByDate] = useState<Record<string, TakenSlot[]>>({});
   const [closedDates, setClosedDates] = useState<string[]>([]);
@@ -88,12 +168,12 @@ export function BookingFlow({
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   /** Bumped to re-run the availability fetch without changing the window. */
   const [refreshNonce, setRefreshNonce] = useState(0);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(initialDate);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(initialSlot);
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(draft?.name ?? "");
+  const [phone, setPhone] = useState(draft?.phone ?? "");
+  const [email, setEmail] = useState(draft?.email ?? "");
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -123,24 +203,34 @@ export function BookingFlow({
     email?: string;
   }>({});
 
-  /** Validate the customer fields the same way the server will. */
-  function validateDetails(): { name?: string; phone?: string; email?: string } {
+  /**
+   * Validate the customer fields the same way the server will. Accepts
+   * explicit values so a restored draft can be checked without this state —
+   * the default is the live fields.
+   */
+  function validateDetails(
+    values: { name: string; phone: string; email: string } = {
+      name,
+      phone,
+      email,
+    }
+  ): { name?: string; phone?: string; email?: string } {
     const errors: { name?: string; phone?: string; email?: string } = {};
 
-    if (name.trim().length < 2) {
+    if (values.name.trim().length < 2) {
       errors.name = t.book.errors.nameRequired;
-    } else if (name.trim().length > 80) {
+    } else if (values.name.trim().length > 80) {
       errors.name = t.book.errors.nameTooLong;
     }
 
-    const parsedPhone = ethiopianPhone.safeParse(phone);
-    if (!phone.trim()) {
+    const parsedPhone = ethiopianPhone.safeParse(values.phone);
+    if (!values.phone.trim()) {
       errors.phone = t.book.errors.phoneRequired;
     } else if (!parsedPhone.success) {
       errors.phone = t.book.errors.phoneInvalid;
     }
 
-    const trimmedEmail = email.trim();
+    const trimmedEmail = values.email.trim();
     // Email is optional — only check the format when something is entered.
     if (
       trimmedEmail &&
@@ -200,6 +290,7 @@ export function BookingFlow({
 
   /** Restart the flow from step 1 (used by "Book another"). */
   function bookAnother() {
+    clearDraft();
     setConfirmation(null);
     setServiceId(null);
     setBarberId(null);
@@ -303,6 +394,52 @@ export function BookingFlow({
     return () => controller.abort();
   }, [windowStartMs, serviceId, barberId, refreshNonce]);
 
+  /**
+   * Mirror progress into sessionStorage after every change, so the customer
+   * resumes where they left off after a language switch (`/en/book` →
+   * `/am/book` remounts the page), a reload, or Back. Skipped on the throwaway
+   * hydration instance — it holds only defaults, and writing those would erase
+   * the very draft it exists to hand over — and once the booking is confirmed,
+   * when `clearDraft` has already run.
+   */
+  useEffect(() => {
+    if (!live || confirmation) return;
+    const untouched =
+      !serviceId &&
+      !barberId &&
+      !selectedDate &&
+      !selectedSlot &&
+      !name.trim() &&
+      !phone.trim() &&
+      !email.trim();
+    if (untouched) return;
+    writeDraft({
+      serviceId,
+      barberId,
+      step,
+      furthestStep,
+      windowStartMs,
+      selectedDate,
+      selectedSlot,
+      name,
+      phone,
+      email,
+    });
+  }, [
+    live,
+    confirmation,
+    serviceId,
+    barberId,
+    step,
+    furthestStep,
+    windowStartMs,
+    selectedDate,
+    selectedSlot,
+    name,
+    phone,
+    email,
+  ]);
+
   const canAdvanceWindow =
     windowStartMs !== null &&
     windowStartMs + WINDOW_DAYS * DAY_MS <=
@@ -363,6 +500,8 @@ export function BookingFlow({
           managementToken: body.management_token,
           slotIso: selectedSlot,
         });
+        // The booking exists now — a reload must not resurrect it as a draft.
+        clearDraft();
         return;
       }
 

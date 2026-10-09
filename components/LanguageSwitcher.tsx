@@ -83,9 +83,13 @@ export function LanguageSwitcher({ t }: { t: Dictionary }) {
     // Remember the choice + flip <html lang> (see persistLocale).
     persistLocale(locale);
 
-    // `/en/services` → `/am/services`; keep deeper segments intact.
+    // `/en/services` → `/am/services`; keep deeper segments *and* the query
+    // string intact — `/en/book?barber=…` must keep its preselected barber,
+    // or switching language would silently drop that choice.
     const rest = segments.slice(2).join("/");
-    const target = rest ? `/${locale}/${rest}` : `/${locale}`;
+    const target = `${rest ? `/${locale}/${rest}` : `/${locale}`}${
+      window.location.search
+    }`;
     startTransition(() => router.push(target));
   }
 

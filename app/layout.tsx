@@ -142,9 +142,18 @@ export default async function RootLayout({
   return (
     <html
       lang={LOCALE_TAGS[locale]}
-      className={`${geistSans.variable} ${geistMono.variable} ${serifDisplay.variable} ${logaComic.variable} ${ebrima.variable} h-full antialiased`}
+      // Opt out of machine translation (Google Translate / browser translate):
+      // the site ships first-party English + Amharic behind the globe switcher,
+      // so overwriting it with machine text only corrupts the UI. `lang` stays
+      // accurate for screen readers and the `html[lang="am"]` font rules —
+      // translate and lang are independent attributes.
+      translate="no"
+      className={`${geistSans.variable} ${geistMono.variable} ${serifDisplay.variable} ${logaComic.variable} ${ebrima.variable} notranslate h-full antialiased`}
     >
       <head>
+        {/* Google Translate's documented page-level opt-out (meta name="google"
+            is ignored by the Metadata API, so it lives here in the head). */}
+        <meta name="google" content="notranslate" />
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
       <body className="flex min-h-full flex-col bg-charcoal font-sans text-cream">
