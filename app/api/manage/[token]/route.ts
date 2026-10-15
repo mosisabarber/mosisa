@@ -20,9 +20,15 @@ import {
   isOpenForChanges,
 } from "@/lib/booking/management";
 import { classifyChange } from "@/lib/booking/lateness";
-import { formatAddisTime, addisDateKey } from "@/lib/booking/time";
+import {
+  addisDateKey,
+  formatAddisTime,
+  formatAddisTime12h,
+} from "@/lib/booking/time";
+import { notificationSiteUrl } from "@/lib/seo";
 import { sendEmail } from "@/lib/notifications/email";
 import { sendSMS } from "@/lib/notifications/sms";
+import { greetingName } from "@/lib/notifications/format";
 
 const SIXTY_DAYS_MS = 60 * 24 * 3600 * 1000;
 
@@ -178,19 +184,25 @@ export async function PATCH(
   }
 
   // Fire-and-forget notification of the new time (never fails the request).
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  // Links must point at the live domain (mosisabarber.com), never localhost.
+  const siteUrl = notificationSiteUrl(request);
   const manageUrl = `${siteUrl}/manage/${token}`;
-  const newDateKey = addisDateKey(startMs);
-  const newStartTime = formatAddisTime(startMs);
+  // Plain ASCII labels (Gregorian date key + English 12-hour Addis clock) —
+  // keeps the SMS GSM-7 and inside one segment.
+  const newWhenDate = addisDateKey(startMs);
+  const newWhenTime = formatAddisTime12h(formatAddisTime(startMs));
+
+  // Greeting uses the first word the customer typed ("Dear Dawit").
+  const dearName = greetingName(appointment.customerName);
 
   // Email is optional — skip delivery when no address was given at booking.
   if (appointment.customerEmail) {
     const emailResult = await sendEmail(
       appointment.customerEmail,
       `Rescheduled - ${service.name} with ${appointment.barber.name}`,
-      `<p>Hi ${appointment.customerName},</p>
-     <p>Your appointment has been moved to:</p>
-     <p><strong>${newDateKey} at ${newStartTime}</strong> (Harar) with ${appointment.barber.name}</p>
+      `<p>Dear ${dearName},</p>
+     <p>Your <strong>${service.name}</strong> with ${appointment.barber.name} has been moved to:</p>
+     <p><strong>${newWhenDate} at ${newWhenTime}</strong> (Harar)</p>
      <p><a href="${manageUrl}">Manage your appointment</a></p>`
     );
     if (!emailResult.success) {
@@ -198,10 +210,12 @@ export async function PATCH(
     }
   }
 
-  const smsResult = await sendSMS(
-    appointment.customerPhone,
-    `Mosisa Barber Shop: moved to ${newDateKey} ${newStartTime}. Manage: ${manageUrl}`
-  );
+  // ≤150 chars = one GSM-7 segment; compact fallback keeps the link intact.
+  let rescheduleSms = `Dear ${dearName}, your ${service.name} with ${appointment.barber.name} is moved to ${newWhenDate} at ${newWhenTime}. Manage: ${manageUrl}`;
+  if (rescheduleSms.length > 150) {
+    rescheduleSms = `Dear ${dearName}, your appointment is moved to ${newWhenDate} at ${newWhenTime}. Manage: ${manageUrl}`;
+  }
+  const smsResult = await sendSMS(appointment.customerPhone, rescheduleSms);
   if (!smsResult.success) {
     console.error("[manage] sms notification failed:", smsResult.error);
   }
@@ -256,18 +270,21 @@ export async function DELETE(
     );
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-  const manageUrl = `${siteUrl}/manage/${token}`;
-  const dateKey = addisDateKey(appointment.startDatetime.getTime());
-  const startTime = formatAddisTime(appointment.startDatetime.getTime());
-  const change = classifyChange(appointment.startDatetime);
+  // Links must point at the live domain (mosisabarber.com), never localhost.
+  const siteUrl = notificationSiteUrl(request);
+  // Plain ASCII labels (Gregorian date key + English 12-hour Addis clock).
+  const whenDate = addisDateKey(appointment.startDatetime.getTime());
+  const whenTime = formatAddisTime12h(formatAddisTime(appointment.startDatetime.getTime()));
+  const change = classifyChange(appointment.startDatetime);  // Greeting uses the first word the customer typed ("Dear Dawit").
+  const dearName = greetingName(appointment.customerName);
 
         // Email is optional — skip delivery when no address was given.
         if (appointment.customerEmail) {
-          const emailResult = await sendEmail(            appointment.customerEmail,
+          const emailResult = await sendEmail(
+            appointment.customerEmail,
             `Cancelled - ${appointment.service.name}`,
-            `<p>Hi ${appointment.customerName},</p>
-     <p>Your appointment on <strong>${dateKey} at ${startTime}</strong> with ${appointment.barber.name} has been cancelled.</p>
+            `<p>Dear ${dearName},</p>
+     <p>Your <strong>${appointment.service.name}</strong> appointment on <strong>${whenDate} at ${whenTime}</strong> with ${appointment.barber.name} has been cancelled.</p>
      ${change.isLate
        ? "<p>This was a late cancellation (inside 12 hours). Thanks for letting us know.</p>"
        : ""}
@@ -278,10 +295,12 @@ export async function DELETE(
           }
         }
 
-  const smsResult = await sendSMS(
-    appointment.customerPhone,
-    `Mosisa Barber Shop: your ${dateKey} ${startTime} appointment is cancelled. Book again: ${siteUrl}/book`
-  );
+  // ≤150 chars = one GSM-7 segment; compact fallback keeps the book link.
+  let cancelSms = `Dear ${dearName}, your ${appointment.service.name} appointment on ${whenDate} at ${whenTime} is cancelled. Book again: ${siteUrl}/book`;
+  if (cancelSms.length > 150) {
+    cancelSms = `Dear ${dearName}, your appointment on ${whenDate} at ${whenTime} is cancelled. Book again: ${siteUrl}/book`;
+  }
+  const smsResult = await sendSMS(appointment.customerPhone, cancelSms);
   if (!smsResult.success) {
     console.error("[manage] sms notification failed:", smsResult.error);
   }

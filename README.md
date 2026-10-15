@@ -49,6 +49,8 @@ Useful scripts:
 | `npm run test:validation` | §16 Stage 9: input validation, 60-day horizon, token entropy, admin 401s |
 | `npm run test:buffer` | §16 Stage 9: per-barber buffer time in slot calculation |
 | `npm run test:concurrency` (strict) | §16 Stage 9: true simultaneous POST race on one slot — `scripts/test-concurrency-strict.mjs` |
+| `npm run test:labels` | Bilingual (English + Amharic) date/time labels and the notification link fallback |
+| `npm run test:notifications` | Confirmation/reschedule/cancel messages — real routes, provider sends intercepted |
 
 ## Deployment (Vercel + Neon)
 
@@ -56,6 +58,21 @@ Useful scripts:
 2. Create a Neon project and copy its pooled connection string.
 3. In Vercel → Settings → Environment Variables, add every variable from `.env.example` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `BLOB_READ_WRITE_TOKEN`, `RESEND_API_KEY`, `SMSETHIOPIA_API_KEY`, `NEXT_PUBLIC_SITE_URL`). Never commit `.env` files.
 4. Redeploy. Migrations are applied via `npm run db:migrate` (run locally against the Neon URL, or as a build/release step).
+
+## Domain & customer notifications (mosisabarber.com)
+
+Every SMS/email the shop sends carries a private **manage link** (`/manage/<token>`) — for guests this is often the only way back to their booking, so the link must resolve to the live site.
+
+1. **Serve the site on the domain** — Vercel → Project → Settings → Domains → add `mosisabarber.com` (redirect `www` → apex).
+2. **Point the links at it** — set on Vercel (Production):
+   - `NEXT_PUBLIC_SITE_URL=https://mosisabarber.com` — used to build manage/booking links in notifications and canonical/OG URLs. If it is ever missing, `notificationSiteUrl()` (`lib/seo.ts`) falls back to the origin the request arrived on, so a link is never empty.
+   - `BETTER_AUTH_URL=https://mosisabarber.com`
+3. **Verify the domain in Resend** — resend.com/domains → Add `mosisabarber.com` → add the three DNS records it shows (SPF + DKIM `TXT`, plus the DMARC `TXT` `_dmarc` record) at your DNS provider, wait for "Verified", then set:
+   - `EMAIL_FROM="Mosisa Barber Shop <bookings@mosisabarber.com>"`
+   Until verification completes, Resend's testing sender (`onboarding@resend.dev`) is used, which only delivers to your own account address.
+4. **SMS** — `SMSETHIOPIA_API_KEY` from the SMSEthiopia console. Messages are bilingual (English + Amharic date/time in brackets), so they use Unicode (UCS-2) SMS encoding: up to ~70 characters per segment, and confirmation messages with a manage link run to a few segments.
+
+Locally keep `NEXT_PUBLIC_SITE_URL=http://localhost:3000` in `.env.local` (the admin pages fetch `/api/*` from that origin).
 
 ## Build progress
 

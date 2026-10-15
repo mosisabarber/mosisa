@@ -270,6 +270,33 @@ export function formatAddisDateLabel(
   return `${dow}, ${day} ${month} ${year}`;
 }
 
+/* --- Bilingual labels for customer notifications -------------------------
+ * Confirmation / reschedule / cancel messages (AGENTS.md §7) go to both
+ * English- and Amharic-reading customers in one send, so each date and time
+ * carries its Ethiopian form in brackets.
+ */
+
+/**
+ * '3:00 PM (3:00 ጠዋት)' — English 12-hour clock with the Ethiopian 6:00
+ * clock in brackets. Takes a UTC instant (the DB stores timestamptz).
+ */
+export function formatBilingualTime(utcMs: number): string {
+  const hhmm = formatAddisTime(utcMs);
+  const amharic = formatAddisTimeLabel(hhmm, { ethiopian: true });
+  return `${formatAddisTime12h(hhmm)} (${amharic})`;
+}
+
+/**
+ * '2026-10-15 (15 ጥቅምት 2019)' — Gregorian date key with the Ethiopian
+ * calendar date in brackets.
+ */
+export function formatBilingualDate(utcMs: number): string {
+  const dateKey = addisDateKey(utcMs);
+  const { day, month, year } = toEthiopianDate(dateKey);
+  const monthName = ETHIOPIAN_MONTHS[month - 1] ?? "";
+  return `${dateKey} (${day} ${monthName} ${year})`;
+}
+
 /** Build an ISO datetime string (with +03:00 offset) from date + 'HH:mm'. */
 export function buildAddisIso(dateKey: string, hhmm: string): string {
   return `${dateKey}T${hhmm}:00+03:00`;

@@ -22,7 +22,9 @@
     "test:taken": "node scripts/test-taken-slots.mjs",
     "test": "node scripts/test-validation.mjs && node scripts/test-buffer.mjs && node scripts/test-horizon.mjs && node scripts/test-concurrency-strict.mjs",
     "test:booking": "node scripts/smoke-booking.mjs",
-    "test:manage": "node scripts/smoke-manage.mjs"
+    "test:manage": "node scripts/smoke-manage.mjs",
+    "test:labels": "tsx scripts/test-notification-labels.mts",
+    "test:notifications": "tsx scripts/test-notification-messages.mts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.5",

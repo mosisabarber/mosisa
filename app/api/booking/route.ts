@@ -21,8 +21,14 @@ import { bookingInputSchema } from "@/lib/booking/validation";
 import { checkBookingRateLimit, clientIpFromRequest } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/notifications/email";
 import { sendSMS } from "@/lib/notifications/sms";
+import { greetingName } from "@/lib/notifications/format";
 import { buildIcs } from "@/lib/notifications/calendar";
-import { formatAddisTime, addisDateKey } from "@/lib/booking/time";
+import {
+  addisDateKey,
+  formatAddisTime,
+  formatAddisTime12h,
+} from "@/lib/booking/time";
+import { notificationSiteUrl } from "@/lib/seo";
 
 function generateManagementToken(): string {
   return randomBytes(24).toString("base64url"); // crypto-random, not guessable
@@ -143,11 +149,15 @@ export async function POST(request: Request) {
   }
 
   // 5 — notifications (fire-and-forget; failures never fail the booking)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  // Links must point at the live domain (mosisabarber.com), never localhost.
+  const siteUrl = notificationSiteUrl(request);
   const manageUrl = `${siteUrl}/manage/${managementToken}`;
-  const startKey = addisDateKey(startMs);
-  const startTime = formatAddisTime(startMs);
-  const endTime = formatAddisTime(endDatetime.getTime());
+  // Plain ASCII labels (Gregorian date key + English 12-hour Addis clock):
+  // no Amharic, so every SMS stays GSM-7 — one segment at ≤150 chars instead
+  // of three UCS-2 segments.
+  const whenDate = addisDateKey(startMs);
+  const whenStart = formatAddisTime12h(formatAddisTime(startMs));
+  const whenEnd = formatAddisTime12h(formatAddisTime(endDatetime.getTime()));
 
   const ics = buildIcs({
     uid: `${appointmentId}@mosisa-barber-shop`,
@@ -158,15 +168,18 @@ export async function POST(request: Request) {
     location: "Mosisa Barber Shop, Harar",
     });
 
+  // Greeting uses the first word the customer typed ("Dear Dawit").
+  const dearName = greetingName(input.customer_name);
+
   // Email is optional — only attempt delivery when an address was given.
   if (input.customer_email) {
     const emailResult = await sendEmail(
       input.customer_email,
       `Your booking - ${service.name} with ${barber.name}`,
-      `<p>Hi ${input.customer_name},</p>
-     <p>Your appointment is confirmed:</p>
-     <p><strong>${service.name}</strong> with ${barber.name}<br/>
-     ${startKey} at ${startTime}-${endTime} (Harar)</p>
+      `<p>Dear ${dearName},</p>
+     <p>You are booking <strong>${service.name}</strong> with ${barber.name}.</p>
+     <p>Your appointment is confirmed:<br/>
+     ${whenDate} at ${whenStart}-${whenEnd} (Harar)</p>
      <p><a href="${manageUrl}">Manage your appointment</a> (view, reschedule, cancel)</p>
      <p><a href="data:text/calendar;base64,${Buffer.from(ics).toString("base64")}">Add to calendar (.ics)</a></p>`
     );
@@ -175,10 +188,14 @@ export async function POST(request: Request) {
     }
   }
 
-  const smsResult = await sendSMS(
-    input.customer_phone,
-    `Mosisa Barber Shop: ${service.name} with ${barber.name} on ${startKey} ${startTime}. Manage: ${manageUrl}`
-  );
+  // ≤150 chars keeps the SMS one GSM-7 segment. Unusually long service or
+  // barber names would push the full wording over, so fall back to a compact
+  // form that still greets the customer and keeps the manage link intact.
+  let smsText = `Dear ${dearName}, you are booking ${service.name} with ${barber.name} on ${whenDate} at ${whenStart}. Manage: ${manageUrl}`;
+  if (smsText.length > 150) {
+    smsText = `Dear ${dearName}, booking confirmed for ${whenDate} at ${whenStart}. Manage: ${manageUrl}`;
+  }
+  const smsResult = await sendSMS(input.customer_phone, smsText);
   if (!smsResult.success) {
     console.error("[booking] sms notification failed:", smsResult.error);
   }
