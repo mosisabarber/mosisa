@@ -41,3 +41,31 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# Generated build files
+
+.next/
+.open-next/
+
+# Cloudflare generated files
+
+.wrangler/
+
+# Local tool files
+
+.freebuff/
+
+# Environment variables and secrets
+
+.env
+.env.*
+!.env.example
+
+.next/
+.open-next/
+.wrangler/
+.freebuff/
+.env
+.env.*
+!.env.example
